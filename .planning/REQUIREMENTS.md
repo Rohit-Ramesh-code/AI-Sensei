@@ -15,7 +15,7 @@
 ### LLM Analysis
 
 - [ ] **ANLZ-01**: LLM Analyst Agent triggers an alert recommendation when any toner color drops below a configurable threshold (default 20%)
-- [ ] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0–1.0) alongside its analysis output as a structured field
+- [ ] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0-1.0) alongside its analysis output as a structured field
 - [ ] **ANLZ-03**: LLM Analyst Agent produces a natural language explanation of its reasoning that is included in the outbound alert email
 - [ ] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
 
@@ -80,33 +80,33 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SNMP-01 | Phase 1 | Pending |
-| SNMP-02 | Phase 1 | Pending |
-| SNMP-03 | Phase 1 | Pending |
-| SNMP-04 | Phase 1 | Pending |
-| ALRT-01 | Phase 1 | Pending |
-| GURD-01 | Phase 2 | Pending |
-| GURD-02 | Phase 3 | Pending |
-| GURD-03 | Phase 2 | Pending |
-| GURD-04 | Phase 2 | Pending |
-| ANLZ-01 | Phase 2 | Pending |
-| ANLZ-02 | Phase 3 | Pending |
-| ANLZ-03 | Phase 3 | Pending |
-| ANLZ-04 | Phase 3 | Pending |
-| ALRT-02 | Phase 2 | Pending |
-| ALRT-03 | Phase 2 | Pending |
-| SCHD-01 | Phase 4 | Pending |
-| UI-01 | Phase 5 | Pending |
-| UI-02 | Phase 5 | Pending |
-| UI-03 | Phase 5 | Pending |
-| UI-04 | Phase 5 | Pending |
-| UI-05 | Phase 5 | Pending |
+| SNMP-01 | Phase 1: Foundation | Pending |
+| SNMP-02 | Phase 1: Foundation | Pending |
+| SNMP-03 | Phase 1: Foundation | Pending |
+| SNMP-04 | Phase 1: Foundation | Pending |
+| ALRT-01 | Phase 1: Foundation | Pending |
+| ANLZ-01 | Phase 2: Monitoring Pipeline | Pending |
+| GURD-01 | Phase 2: Monitoring Pipeline | Pending |
+| GURD-03 | Phase 2: Monitoring Pipeline | Pending |
+| GURD-04 | Phase 2: Monitoring Pipeline | Pending |
+| ALRT-02 | Phase 2: Monitoring Pipeline | Pending |
+| ALRT-03 | Phase 2: Monitoring Pipeline | Pending |
+| ANLZ-02 | Phase 3: LLM Analyst | Pending |
+| ANLZ-03 | Phase 3: LLM Analyst | Pending |
+| ANLZ-04 | Phase 3: LLM Analyst | Pending |
+| GURD-02 | Phase 3: LLM Analyst | Pending |
+| SCHD-01 | Phase 4: Orchestration | Pending |
+| UI-01 | Phase 5: Web Chat Interface | Pending |
+| UI-02 | Phase 5: Web Chat Interface | Pending |
+| UI-03 | Phase 5: Web Chat Interface | Pending |
+| UI-04 | Phase 5: Web Chat Interface | Pending |
+| UI-05 | Phase 5: Web Chat Interface | Pending |
 
 **Coverage:**
 - v1 requirements: 21 total
 - Mapped to phases: 21
-- Unmapped: 0 ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-28*
-*Last updated: 2026-02-28 after adding web chat UI requirements*
+*Last updated: 2026-02-28 after roadmap creation (phase mappings confirmed)*
