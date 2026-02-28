@@ -30,11 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Every poll result (valid or invalid) is appended to a JSON Lines log file with timestamp and quality metadata
   4. Running the EWS adapter sends a test email to the configured recipient through the Exchange service account
   5. State type definitions exist and are importable by downstream modules
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 01-01: TBD
-- [ ] 01-02: TBD
+- [ ] 01-01-PLAN.md — State types (TypedDict + QualityFlag enum) and SNMP adapter with sentinel handling and mock mode
+- [ ] 01-02-PLAN.md — JSONL persistence layer, requirements.txt, and .env.example scaffolding
+- [ ] 01-03-PLAN.md — EWS adapter with exchangelib, mock mode, and live Exchange verification checkpoint
 
 ### Phase 2: Monitoring Pipeline
 **Goal**: System detects low toner via threshold comparison and delivers actionable alert emails, gated by deterministic policy checks -- a complete working product with no LLM dependency
@@ -103,7 +104,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/? | Not started | - |
+| 1. Foundation | 0/3 | Planned | - |
 | 2. Monitoring Pipeline | 0/? | Not started | - |
 | 3. LLM Analyst | 0/? | Not started | - |
 | 4. Orchestration | 0/? | Not started | - |
