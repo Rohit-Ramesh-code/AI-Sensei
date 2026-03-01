@@ -27,8 +27,8 @@ Environment variables:
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import os
 from typing import Optional
 
 from adapters.snmp_adapter import SNMPAdapter
@@ -60,8 +60,10 @@ def run_pipeline(poll_result: Optional[PollResult] = None) -> AgentState:
         Final AgentState after all pipeline stages have run.
     """
     if poll_result is None:
-        snmp = SNMPAdapter()
-        poll_result = asyncio.run(snmp.poll())
+        host = os.getenv("SNMP_HOST", "localhost")
+        community = os.getenv("SNMP_COMMUNITY", "public")
+        snmp = SNMPAdapter(host=host, community=community)
+        poll_result = snmp.poll()
 
     # Initialise state with all required keys
     state: AgentState = {
