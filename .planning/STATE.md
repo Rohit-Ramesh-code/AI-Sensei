@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 Phase: 1 of 5 (Foundation)
 Plan: 3 of 3 in current phase
-Status: In progress — awaiting Task 2 human verification (live Exchange test)
-Last activity: 2026-03-01 -- Plan 01-03 Task 1 complete (EWSAdapter implemented, 10 tests pass)
+Status: In progress — 01-01 and 01-03 complete; 01-03 awaiting live Exchange test
+Last activity: 2026-03-01 -- Plan 01-01 complete (state_types + SNMPAdapter, 22 tests pass)
 
 Progress: [##........] 20%
 
@@ -49,6 +49,9 @@ Recent decisions affecting current work:
 - [01-03]: Account built once in __init__ to avoid repeated TLS handshakes per send_alert call
 - [01-03]: MSAL auth raises NotImplementedError in v1 -- out of scope per CLAUDE.md; only NTLM and BASIC supported
 - [01-03]: auth_type stored as string on adapter so tests can assert without importing exchangelib
+- [01-01]: asyncio.run() used instead of pysnmp-sync-adapter (package incompatible — missing pkg_resources in build isolation)
+- [01-01]: QualityFlag(str, Enum) ensures .value is a plain string for JSON serialization without custom encoder
+- [01-01]: classify_snmp_value checks max_capacity <= 0 to prevent nonsensical percentages when device returns sentinel for max_capacity
 
 ### Pending Todos
 
@@ -62,5 +65,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: 01-03 Task 2 checkpoint:human-verify — EWSAdapter built and tested; awaiting live Exchange email verification
+Stopped at: Completed 01-01-PLAN.md (state_types + SNMPAdapter complete, 22 tests pass)
 Resume file: None

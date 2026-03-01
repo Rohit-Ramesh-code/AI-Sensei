@@ -7,9 +7,9 @@
 
 ### SNMP Data Collection
 
-- [ ] **SNMP-01**: System polls Lexmark XC2235 for toner percentage per color (Cyan, Magenta, Yellow, Black) via SNMP on a scheduled interval
-- [ ] **SNMP-02**: SNMP adapter detects and handles Lexmark sentinel values (-2: unknown, -3: below low threshold) and converts them to structured data quality flags rather than raw error values
-- [ ] **SNMP-03**: SNMP adapter validates each reading for staleness, null values, and out-of-range results, setting a `data_quality_ok` flag on the output
+- [x] **SNMP-01**: System polls Lexmark XC2235 for toner percentage per color (Cyan, Magenta, Yellow, Black) via SNMP on a scheduled interval
+- [x] **SNMP-02**: SNMP adapter detects and handles Lexmark sentinel values (-2: unknown, -3: below low threshold) and converts them to structured data quality flags rather than raw error values
+- [x] **SNMP-03**: SNMP adapter validates each reading for staleness, null values, and out-of-range results, setting a `data_quality_ok` flag on the output
 - [ ] **SNMP-04**: Every poll result (valid or invalid) is persisted to a JSON Lines history log with timestamp and data quality metadata
 
 ### LLM Analysis
@@ -80,9 +80,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SNMP-01 | Phase 1: Foundation | Pending |
-| SNMP-02 | Phase 1: Foundation | Pending |
-| SNMP-03 | Phase 1: Foundation | Pending |
+| SNMP-01 | Phase 1: Foundation | Complete |
+| SNMP-02 | Phase 1: Foundation | Complete |
+| SNMP-03 | Phase 1: Foundation | Complete |
 | SNMP-04 | Phase 1: Foundation | Pending |
 | ALRT-01 | Phase 1: Foundation | Complete |
 | ANLZ-01 | Phase 2: Monitoring Pipeline | Pending |

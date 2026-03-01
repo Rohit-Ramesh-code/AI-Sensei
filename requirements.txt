@@ -1,3 +1,4 @@
+pysnmp==7.1.22
 exchangelib
 python-dotenv
 pytest
