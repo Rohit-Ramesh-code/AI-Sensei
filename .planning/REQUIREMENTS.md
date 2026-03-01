@@ -28,7 +28,7 @@
 
 ### Alerting & Communication
 
-- [ ] **ALRT-01**: Communicator Agent sends alert emails via Microsoft Exchange Web Services (EWS) using a configured service account
+- [x] **ALRT-01**: Communicator Agent sends alert emails via Microsoft Exchange Web Services (EWS) using a configured service account
 - [ ] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
 - [ ] **ALRT-03**: All suppressed alert events are recorded in the history log with reason, timestamp, and the data that triggered the suppression
 
@@ -84,7 +84,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SNMP-02 | Phase 1: Foundation | Pending |
 | SNMP-03 | Phase 1: Foundation | Pending |
 | SNMP-04 | Phase 1: Foundation | Pending |
-| ALRT-01 | Phase 1: Foundation | Pending |
+| ALRT-01 | Phase 1: Foundation | Complete |
 | ANLZ-01 | Phase 2: Monitoring Pipeline | Pending |
 | GURD-01 | Phase 2: Monitoring Pipeline | Pending |
 | GURD-03 | Phase 2: Monitoring Pipeline | Pending |
