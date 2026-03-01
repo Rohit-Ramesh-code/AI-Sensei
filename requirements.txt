@@ -1,0 +1,3 @@
+exchangelib
+python-dotenv
+pytest
