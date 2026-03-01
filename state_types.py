@@ -114,6 +114,7 @@ class AgentState(TypedDict):
     alert_sent         — Set True by the Communicator after a successful send
     suppression_reason — Human-readable reason set by Policy Guard when blocked
     decision_log       — Append-only log; each node appends its own entry
+    flagged_colors     — List of flagged color dicts from Analyst; None until Analyst runs
     """
 
     poll_result: Optional[PollResult]
@@ -121,3 +122,4 @@ class AgentState(TypedDict):
     alert_sent: bool
     suppression_reason: Optional[str]
     decision_log: Annotated[list[str], operator.add]
+    flagged_colors: Optional[list]  # Pipeline carrier: list of flagged color dicts from Analyst
