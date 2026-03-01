@@ -105,8 +105,8 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Foundation | 0/3 | Planned | - |
-| 2. Monitoring Pipeline | 1/3 | In Progress|  |
+| 1. Foundation | 2/3 | In Progress (checkpoint) | - |
+| 2. Monitoring Pipeline | 2/3 | In Progress | - |
 | 3. LLM Analyst | 0/? | Not started | - |
 | 4. Orchestration | 0/? | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |

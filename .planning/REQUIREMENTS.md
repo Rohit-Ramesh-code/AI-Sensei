@@ -21,16 +21,16 @@
 
 ### Policy Guard
 
-- [ ] **GURD-01**: Policy Guard enforces a maximum of 1 alert email per printer per 24-hour window, suppressing duplicates regardless of polling frequency
+- [x] **GURD-01**: Policy Guard enforces a maximum of 1 alert email per printer per 24-hour window, suppressing duplicates regardless of polling frequency
 - [ ] **GURD-02**: Policy Guard blocks alert sending if the LLM Analyst's confidence score falls below the configured minimum threshold (default 0.7)
-- [ ] **GURD-03**: Policy Guard blocks alert sending if the SNMP data quality check failed (stale, null, or sentinel value not resolved)
-- [ ] **GURD-04**: Every suppressed alert is logged with its suppression reason (rate limit hit / confidence too low / data quality failed) to the history log
+- [x] **GURD-03**: Policy Guard blocks alert sending if the SNMP data quality check failed (stale, null, or sentinel value not resolved)
+- [x] **GURD-04**: Every suppressed alert is logged with its suppression reason (rate limit hit / confidence too low / data quality failed) to the history log
 
 ### Alerting & Communication
 
 - [x] **ALRT-01**: Communicator Agent sends alert emails via Microsoft Exchange Web Services (EWS) using a configured service account
 - [ ] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
-- [ ] **ALRT-03**: All suppressed alert events are recorded in the history log with reason, timestamp, and the data that triggered the suppression
+- [x] **ALRT-03**: All suppressed alert events are recorded in the history log with reason, timestamp, and the data that triggered the suppression
 
 ### Scheduling & Orchestration
 
@@ -86,11 +86,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SNMP-04 | Phase 1: Foundation | Complete |
 | ALRT-01 | Phase 1: Foundation | Complete |
 | ANLZ-01 | Phase 2: Monitoring Pipeline | Complete |
-| GURD-01 | Phase 2: Monitoring Pipeline | Pending |
-| GURD-03 | Phase 2: Monitoring Pipeline | Pending |
-| GURD-04 | Phase 2: Monitoring Pipeline | Pending |
+| GURD-01 | Phase 2: Monitoring Pipeline | Complete |
+| GURD-03 | Phase 2: Monitoring Pipeline | Complete |
+| GURD-04 | Phase 2: Monitoring Pipeline | Complete |
 | ALRT-02 | Phase 2: Monitoring Pipeline | Pending |
-| ALRT-03 | Phase 2: Monitoring Pipeline | Pending |
+| ALRT-03 | Phase 2: Monitoring Pipeline | Complete |
 | ANLZ-02 | Phase 3: LLM Analyst | Pending |
 | ANLZ-03 | Phase 3: LLM Analyst | Pending |
 | ANLZ-04 | Phase 3: LLM Analyst | Pending |
