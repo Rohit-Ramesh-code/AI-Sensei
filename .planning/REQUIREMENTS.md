@@ -29,7 +29,7 @@
 ### Alerting & Communication
 
 - [x] **ALRT-01**: Communicator Agent sends alert emails via Microsoft Exchange Web Services (EWS) using a configured service account
-- [ ] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
+- [x] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
 - [x] **ALRT-03**: All suppressed alert events are recorded in the history log with reason, timestamp, and the data that triggered the suppression
 
 ### Scheduling & Orchestration
@@ -89,7 +89,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GURD-01 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-03 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-04 | Phase 2: Monitoring Pipeline | Complete |
-| ALRT-02 | Phase 2: Monitoring Pipeline | Pending |
+| ALRT-02 | Phase 2: Monitoring Pipeline | Complete |
 | ALRT-03 | Phase 2: Monitoring Pipeline | Complete |
 | ANLZ-02 | Phase 3: LLM Analyst | Pending |
 | ANLZ-03 | Phase 3: LLM Analyst | Pending |

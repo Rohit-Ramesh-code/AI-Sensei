@@ -13,7 +13,7 @@ Project Sentinel delivers a printer toner monitoring system in five phases, foll
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 1: Foundation** - SNMP and EWS adapters, state types, and persistence layer
-- [ ] **Phase 2: Monitoring Pipeline** - Threshold-based alerts with policy guard and email delivery
+- [x] **Phase 2: Monitoring Pipeline** - Threshold-based alerts with policy guard and email delivery (completed 2026-03-01)
 - [ ] **Phase 3: LLM Analyst** - AI-powered trend analysis, confidence scoring, and natural language reasoning
 - [ ] **Phase 4: Orchestration** - LangGraph wiring and scheduled autonomous operation
 - [ ] **Phase 5: Web Chat Interface** - Browser-based conversational interface for QC engineers
@@ -50,9 +50,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Extend AgentState with flagged_colors, implement deterministic threshold checker in analyst.py
-- [ ] 02-02-PLAN.md — Implement Policy Guard in safety_logic.py: rate limiting, staleness check, suppression logging
-- [ ] 02-03-PLAN.md — Implement communicator.py (email construction + dispatch) and supervisor.py (sequential pipeline)
+- [x] 02-01-PLAN.md — Extend AgentState with flagged_colors, implement deterministic threshold checker in analyst.py
+- [x] 02-02-PLAN.md — Implement Policy Guard in safety_logic.py: rate limiting, staleness check, suppression logging
+- [x] 02-03-PLAN.md — Implement communicator.py (email construction + dispatch) and supervisor.py (sequential pipeline)
 
 ### Phase 3: LLM Analyst
 **Goal**: An LLM analyst produces trend-aware predictions with confidence scores, and the policy guard uses confidence to gate alerts -- transforming threshold alerts into intelligent analysis
@@ -106,7 +106,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/3 | In Progress (checkpoint) | - |
-| 2. Monitoring Pipeline | 2/3 | In Progress | - |
+| 2. Monitoring Pipeline | 3/3 | Complete   | 2026-03-01 |
 | 3. LLM Analyst | 0/? | Not started | - |
 | 4. Orchestration | 0/? | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
