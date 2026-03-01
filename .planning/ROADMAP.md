@@ -47,11 +47,12 @@ Plans:
   3. A second alert for the same printer within 24 hours is suppressed (rate limiting works)
   4. Alerts are suppressed when SNMP data quality is bad (stale, null, or unresolved sentinel), and the suppression reason is logged
   5. Every suppressed alert is recorded in the history log with reason, timestamp, and triggering data
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: TBD
-- [ ] 02-02: TBD
+- [ ] 02-01-PLAN.md — Extend AgentState with flagged_colors, implement deterministic threshold checker in analyst.py
+- [ ] 02-02-PLAN.md — Implement Policy Guard in safety_logic.py: rate limiting, staleness check, suppression logging
+- [ ] 02-03-PLAN.md — Implement communicator.py (email construction + dispatch) and supervisor.py (sequential pipeline)
 
 ### Phase 3: LLM Analyst
 **Goal**: An LLM analyst produces trend-aware predictions with confidence scores, and the policy guard uses confidence to gate alerts -- transforming threshold alerts into intelligent analysis
@@ -105,7 +106,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Foundation | 0/3 | Planned | - |
-| 2. Monitoring Pipeline | 0/? | Not started | - |
+| 2. Monitoring Pipeline | 0/3 | Planned | - |
 | 3. LLM Analyst | 0/? | Not started | - |
 | 4. Orchestration | 0/? | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
