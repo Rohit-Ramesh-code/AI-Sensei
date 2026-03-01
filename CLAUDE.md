@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Project Sentinel** is a Python-based multi-agent monitoring and analysis system. It uses SNMP to pull real-time toner and supply capacity data from a Lexmark XC2235 printer, analyzes it through a LangGraph multi-agent framework, and sends proactive maintenance alerts via Microsoft Exchange (EWS). A Policy Guard layer enforces safety rules before any outbound action is taken.
+**Project Sentinel** is a Python-based multi-agent monitoring and analysis system. It uses SNMP to pull real-time toner and supply capacity data from a Lexmark XC2235 printer, analyzes it through a LangGraph multi-agent framework, and sends proactive maintenance alerts via SMTP email (Outlook / Office 365). A Policy Guard layer enforces safety rules before any outbound action is taken.
 
 **Core Value:** Predict printer supply depletion before it happens — alerting the right person with enough lead time to act.
 
@@ -21,9 +21,9 @@ main.py                     # Entry point — orchestrates startup and scheduler
 agents/
   supervisor.py             # LangGraph orchestrator — coordinates agent pipeline
   analyst.py                # LLM Analyst Agent — predicts maintenance needs
-  communicator.py           # Communicator Agent — sends email alerts via EWS
+  communicator.py           # Communicator Agent — sends email alerts via SMTP
 adapters/
-  ews_scraper.py            # Microsoft Exchange Web Services — outbound email only
+  smtp_adapter.py           # SMTP adapter — outbound alert emails via Outlook/Office 365
   snmp_adapter.py           # SNMP adapter — pulls toner/capacity from Lexmark XC2235
 guardrails/
   safety_logic.py           # Policy Guard — enforces rate limits and confidence thresholds
@@ -47,7 +47,7 @@ logs/
 - Output is passed to the Policy Guard before any alert is sent
 
 ### Communicator Agent (communicator.py)
-- Sends alert emails through a configured Exchange mailbox via EWS
+- Sends alert emails through a configured Outlook account via SMTP (smtp.office365.com:587)
 - Email recipient: a single designated admin/manager (configurable)
 - Alert email includes: current toner %, time-to-depletion estimate, confidence score, and recommended action
 - Only executes after Policy Guard clears the action
@@ -77,17 +77,16 @@ If either check fails, the alert is suppressed and the event is logged.
 - [x] SNMP adapter pulling live toner/capacity data from Lexmark XC2235
 - [x] LangGraph agent pipeline (Monitor → Analyst → Communicator)
 - [x] Threshold-based alerts + time-to-depletion estimate in alert email
-- [x] EWS outbound email to a designated recipient
+- [x] SMTP outbound email to a designated recipient (Outlook / Office 365)
 - [x] Policy Guard: rate limiting (1/day/printer) + confidence threshold
 - [x] Scheduled polling (hourly via scheduler in main.py)
 - [x] Persistent logging of all decisions
 
 ## Out of Scope (v1)
 
-- Inbound email reading / EWS command processing
+- Inbound email reading
 - Web dashboard or status UI
 - Multi-printer fleet management UI
-- OAuth or external auth for Exchange (use service account credentials)
 - Mobile notifications
 
 ## Development Setup
@@ -105,17 +104,19 @@ Environment variables go in `.env` (loaded via `python-dotenv`). Do not commit `
 Required `.env` keys (to be documented as implemented):
 - `SNMP_HOST` — IP address of the Lexmark XC2235
 - `SNMP_COMMUNITY` — SNMP community string
-- `EWS_SERVER` — Exchange server URL
-- `EWS_USERNAME` / `EWS_PASSWORD` — Exchange service account credentials
+- `SMTP_HOST` — SMTP server hostname (default: smtp.office365.com)
+- `SMTP_PORT` — SMTP port (default: 587)
+- `SMTP_USERNAME` — Your Outlook email address
+- `SMTP_PASSWORD` — Your Outlook password or App Password
 - `ALERT_RECIPIENT` — Email address of the designated admin
 - `LLM_CONFIDENCE_THRESHOLD` — Minimum confidence score (e.g., 0.7)
 
 ## Implementation Order
 
 1. `adapters/snmp_adapter.py` — no dependencies, start here
-2. `adapters/ews_scraper.py` — no dependencies
+2. `adapters/smtp_adapter.py` — no dependencies
 3. `guardrails/safety_logic.py` — depends only on config/logs
 4. `agents/analyst.py` — depends on SNMP data shape
-5. `agents/communicator.py` — depends on EWS adapter + guardrails
+5. `agents/communicator.py` — depends on SMTP adapter + guardrails
 6. `agents/supervisor.py` — LangGraph graph wiring all agents
 7. `main.py` — scheduler + startup orchestration

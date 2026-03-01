@@ -11,8 +11,8 @@ See: .planning/PROJECT.md (updated 2026-02-28)
 
 Phase: 1 of 5 (Foundation)
 Plan: 3 of 3 in current phase
-Status: In progress — 01-01 and 01-02 complete; 01-03 awaiting live Exchange test
-Last activity: 2026-03-01 -- Plan 01-02 complete (JSONL persistence, requirements.txt, .env.example)
+Status: In progress — 01-01 and 01-02 complete; 01-03 awaiting live Outlook SMTP test
+Last activity: 2026-03-01 -- Migrated email adapter from EWS/exchangelib to SMTP (smtplib stdlib) for personal Outlook
 
 Progress: [###.......] 30%
 
@@ -45,10 +45,10 @@ Recent decisions affecting current work:
 - [Roadmap]: Build adapters first (zero dependencies, highest-risk unknowns: Lexmark SNMP behavior, Exchange auth)
 - [Roadmap]: Phase 2 delivers standalone value without LLM -- threshold-based alerts work immediately
 - [Roadmap]: Policy guard before communicator (CLAUDE.md constraint)
-- [01-03]: exchangelib is lazily imported (only on production code path) so mock mode works without the library installed
-- [01-03]: Account built once in __init__ to avoid repeated TLS handshakes per send_alert call
-- [01-03]: MSAL auth raises NotImplementedError in v1 -- out of scope per CLAUDE.md; only NTLM and BASIC supported
-- [01-03]: auth_type stored as string on adapter so tests can assert without importing exchangelib
+- [01-03]: Switched from EWS/exchangelib to smtplib STARTTLS -- personal Outlook works directly, no Exchange server needed
+- [01-03]: New SMTP connection per send_alert() -- avoids stale connections across hourly polling intervals
+- [01-03]: SMTP_HOST defaults to smtp.office365.com -- users only need SMTP_USERNAME and SMTP_PASSWORD
+- [01-03]: App Password required when MFA is enabled on Outlook account
 - [01-02]: jsonlines library used for JSONL I/O — simpler than manual json.dumps per line
 - [01-02]: log_path parameter with default enables test isolation without patching globals
 - [01-02]: .gitignore updated to ignore only logs/*.jsonl and logs/*.json instead of entire logs/
@@ -63,10 +63,10 @@ None yet.
 ### Blockers/Concerns
 
 - Must validate Lexmark XC2235 SNMP behavior against physical device during Phase 1
-- Must confirm Exchange server auth type (Basic Auth vs OAuth) with IT before EWS live test (Task 2 checkpoint in 01-03)
+- Must provide Outlook credentials (SMTP_USERNAME + SMTP_PASSWORD) to verify live email delivery (Task 2 checkpoint in 01-03)
 
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Completed 01-02-PLAN.md (JSONL persistence + requirements.txt + .env.example; 10 tests pass)
+Stopped at: Migrated email adapter from EWS to SMTP (smtplib); 10 tests pass; awaiting live Outlook verification
 Resume file: None
