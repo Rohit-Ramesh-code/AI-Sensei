@@ -154,7 +154,7 @@ async def _poll_real_async(
         ObjectType,
         SnmpEngine,
         UdpTransportTarget,
-        getCmd,
+        get_cmd,
     )
 
     engine = SnmpEngine()
@@ -170,7 +170,7 @@ async def _poll_real_async(
 
     for idx in range(1, 9):
         oid = f"{_OID_DESCRIPTION_BASE}.{idx}"
-        error_indication, error_status, error_index, var_binds = await getCmd(
+        error_indication, error_status, error_index, var_binds = await get_cmd(
             engine,
             auth,
             transport,
@@ -208,7 +208,7 @@ async def _poll_real_async(
 
         # GET level
         raw_level: Optional[int] = None
-        ei, es, _, vb = await getCmd(
+        ei, es, _, vb = await get_cmd(
             engine, auth, transport, ctx, ObjectType(ObjectIdentity(level_oid))
         )
         if not ei and not es and vb:
@@ -219,7 +219,7 @@ async def _poll_real_async(
 
         # GET max_capacity
         raw_max: int = -2  # Default to unknown sentinel if GET fails
-        ei, es, _, vb = await getCmd(
+        ei, es, _, vb = await get_cmd(
             engine, auth, transport, ctx, ObjectType(ObjectIdentity(max_oid))
         )
         if not ei and not es and vb:

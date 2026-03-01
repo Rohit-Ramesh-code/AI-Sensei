@@ -31,6 +31,9 @@ import logging
 import os
 from typing import Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from adapters.snmp_adapter import SNMPAdapter
 from agents.analyst import run_analyst
 from agents.communicator import run_communicator
