@@ -1,6 +1,7 @@
 .env
 __pycache__/
 *.pyc
-logs/
+logs/printer_history.jsonl
+logs/printer_history.json
 .venv/
 .pytest_cache/
