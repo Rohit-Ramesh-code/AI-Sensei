@@ -63,11 +63,12 @@ Plans:
   2. Alert emails now include a natural language explanation of the analyst's reasoning
   3. Fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
   4. Alerts are suppressed when the LLM confidence score falls below the configured minimum (default 0.7), with the reason logged
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
-- [ ] 03-02: TBD
+- [ ] 03-01-PLAN.md — AgentState extension (llm_confidence, llm_reasoning), requirements.txt (langchain-openai, openai), and failing test stubs for all Phase 3 acceptance criteria
+- [ ] 03-02-PLAN.md — LLM analyst rewrite in agents/analyst.py: AnalystOutput schema, compute_color_stats(), call_llm_analyst() with fallback, cold start detection, USE_MOCK_LLM mode
+- [ ] 03-03-PLAN.md — Policy guard 4th check (check_confidence) and communicator Analysis email section (build_body llm_reasoning param)
 
 ### Phase 4: Orchestration
 **Goal**: All nodes are wired into a LangGraph StateGraph that runs autonomously on a schedule, requiring no manual trigger after startup
@@ -107,6 +108,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|----------------|--------|-----------|
 | 1. Foundation | 2/3 | In Progress (checkpoint) | - |
 | 2. Monitoring Pipeline | 3/3 | Complete    | 2026-03-01 |
-| 3. LLM Analyst | 0/? | Not started | - |
+| 3. LLM Analyst | 0/3 | Not started | - |
 | 4. Orchestration | 0/? | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
