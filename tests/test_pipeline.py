@@ -42,6 +42,31 @@ def pipeline_env(monkeypatch):
     monkeypatch.setenv("USE_MOCK_SNMP", "true")
 
 
+@pytest.fixture
+def clean_alert_state(tmp_path, monkeypatch):
+    """
+    Isolate alert_state.json for tests that trigger alerts.
+
+    run_policy_guard's default state_path argument is captured at function
+    definition time, so monkeypatching the module attribute alone is not
+    sufficient. Instead, we patch _load_alert_state to return an empty dict
+    (simulating no prior alert) AND patch _save_alert_state to write to a
+    tmp_path file — keeping the real logs/alert_state.json untouched.
+    """
+    alert_state_store: dict = {}
+
+    def fake_load(state_path):
+        return dict(alert_state_store)
+
+    def fake_save(state, state_path):
+        alert_state_store.clear()
+        alert_state_store.update(state)
+
+    monkeypatch.setattr(safety_logic_module, "_load_alert_state", fake_load)
+    monkeypatch.setattr(safety_logic_module, "_save_alert_state", fake_save)
+    return alert_state_store
+
+
 def _make_reading(color: str, pct: float, quality: str = QualityFlag.OK.value) -> TonerReading:
     """Helper: build a TonerReading dict for a given toner percentage."""
     data_quality_ok = (quality == QualityFlag.OK.value)
@@ -74,11 +99,8 @@ def _make_poll_result(
 # Test 1: Low toner poll -> alert_needed=True
 # ---------------------------------------------------------------------------
 
-def test_pipeline_low_toner_sets_alert_needed(tmp_path, monkeypatch):
+def test_pipeline_low_toner_sets_alert_needed(clean_alert_state):
     """run_pipeline with cyan at 15% (below 20% threshold) sets alert_needed=True."""
-    alert_state_file = tmp_path / "alert_state.json"
-    monkeypatch.setattr(safety_logic_module, "ALERT_STATE_PATH", alert_state_file)
-
     readings = [
         _make_reading("cyan", 15.0),   # below 20% threshold -> WARNING
         _make_reading("magenta", 80.0),
@@ -119,13 +141,10 @@ def test_pipeline_all_ok_no_alert():
 # Test 3: decision_log contains entries from analyst, policy_guard, communicator
 # ---------------------------------------------------------------------------
 
-def test_pipeline_decision_log_has_all_stages(tmp_path, monkeypatch):
+def test_pipeline_decision_log_has_all_stages(clean_alert_state):
     """
     decision_log contains log entries from all three stages when an alert fires.
     """
-    alert_state_file = tmp_path / "alert_state.json"
-    monkeypatch.setattr(safety_logic_module, "ALERT_STATE_PATH", alert_state_file)
-
     readings = [
         _make_reading("cyan", 5.0),  # below 10% critical threshold
         _make_reading("magenta", 80.0),
@@ -185,14 +204,11 @@ def test_pipeline_no_alert_skips_communicator():
 # Test 5: run_pipeline with mock env vars completes without real network calls
 # ---------------------------------------------------------------------------
 
-def test_pipeline_completes_with_mock_mode(tmp_path, monkeypatch):
+def test_pipeline_completes_with_mock_mode(clean_alert_state):
     """
     With USE_MOCK_SNMP=true and USE_MOCK_SMTP=true, run_pipeline() completes
     end-to-end without any real SNMP or SMTP connections.
     """
-    alert_state_file = tmp_path / "alert_state.json"
-    monkeypatch.setattr(safety_logic_module, "ALERT_STATE_PATH", alert_state_file)
-
     # Low toner to exercise the full path including communicator
     readings = [
         _make_reading("black", 5.0),  # below critical threshold
