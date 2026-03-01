@@ -14,7 +14,7 @@
 
 ### LLM Analysis
 
-- [ ] **ANLZ-01**: LLM Analyst Agent triggers an alert recommendation when any toner color drops below a configurable threshold (default 20%)
+- [x] **ANLZ-01**: LLM Analyst Agent triggers an alert recommendation when any toner color drops below a configurable threshold (default 20%)
 - [ ] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0-1.0) alongside its analysis output as a structured field
 - [ ] **ANLZ-03**: LLM Analyst Agent produces a natural language explanation of its reasoning that is included in the outbound alert email
 - [ ] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
@@ -85,7 +85,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SNMP-03 | Phase 1: Foundation | Complete |
 | SNMP-04 | Phase 1: Foundation | Complete |
 | ALRT-01 | Phase 1: Foundation | Complete |
-| ANLZ-01 | Phase 2: Monitoring Pipeline | Pending |
+| ANLZ-01 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-01 | Phase 2: Monitoring Pipeline | Pending |
 | GURD-03 | Phase 2: Monitoring Pipeline | Pending |
 | GURD-04 | Phase 2: Monitoring Pipeline | Pending |

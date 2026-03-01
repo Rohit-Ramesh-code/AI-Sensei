@@ -5,32 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Predict printer supply depletion before it happens -- alerting the right person with enough lead time to act.
-**Current focus:** Phase 1: Foundation
+**Current focus:** Phase 2: Monitoring Pipeline
 
 ## Current Position
 
-Phase: 1 of 5 (Foundation)
-Plan: 3 of 3 in current phase
-Status: In progress — 01-01 and 01-02 complete; 01-03 awaiting live Outlook SMTP test
-Last activity: 2026-03-01 -- Migrated email adapter from EWS/exchangelib to SMTP (smtplib stdlib) for personal Outlook
+Phase: 2 of 5 (Monitoring Pipeline)
+Plan: 1 of 3 in current phase (02-01 complete)
+Status: In progress — 01-01, 01-02 complete; 01-03 partial (SMTP checkpoint); 02-01 complete
+Last activity: 2026-03-01 -- Implemented run_analyst() deterministic threshold checker + 7 passing unit tests
 
-Progress: [###.......] 30%
+Progress: [####......] 40%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2 (01-01 and 01-02; 01-03 partially — awaiting checkpoint)
-- Average duration: ~7 min
-- Total execution time: 0.2 hours
+- Total plans completed: 3 (01-01, 01-02, 02-01; 01-03 partially — awaiting checkpoint)
+- Average duration: ~8 min
+- Total execution time: 0.4 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-foundation | 2 | ~14 min | ~7 min |
+| 02-monitoring-pipeline | 1 | ~8 min | ~8 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (8 min), 01-02 (7 min)
+- Last 5 plans: 01-01 (8 min), 01-02 (7 min), 02-01 (8 min)
 - Trend: baseline
 
 *Updated after each plan completion*
@@ -55,6 +56,9 @@ Recent decisions affecting current work:
 - [01-01]: asyncio.run() used instead of pysnmp-sync-adapter (package incompatible — missing pkg_resources in build isolation)
 - [01-01]: QualityFlag(str, Enum) ensures .value is a plain string for JSON serialization without custom encoder
 - [01-01]: classify_snmp_value checks max_capacity <= 0 to prevent nonsensical percentages when device returns sentinel for max_capacity
+- [02-01]: BELOW_LOW_THRESHOLD treated as CRITICAL regardless of data_quality_ok — SNMP -3 is alert-worthy even without numeric pct
+- [02-01]: list concatenation used for decision_log (not .append()) for LangGraph Annotated[list, operator.add] reducer compatibility
+- [02-01]: flagged_colors typed as Optional[list] to keep pipeline carrier flexible across agents
 
 ### Pending Todos
 
@@ -68,5 +72,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-01
-Stopped at: Migrated email adapter from EWS to SMTP (smtplib); 10 tests pass; awaiting live Outlook verification
+Stopped at: Completed 02-01-PLAN.md — run_analyst() implemented; 39 tests pass across 4 test files; ready for 02-02
 Resume file: None
