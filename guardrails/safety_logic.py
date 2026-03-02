@@ -2,11 +2,13 @@
 guardrails/safety_logic.py — Policy Guard for Project Sentinel.
 
 All outbound alert actions must pass through run_policy_guard() before the
-Communicator Agent sends any email. Two independent checks are enforced:
+Communicator Agent sends any email. Four independent checks are enforced:
 
-  1. Data freshness — poll timestamp must not be older than STALE_THRESHOLD_MINUTES
-  2. SNMP quality  — poll_result.snmp_error must be None
-  3. Rate limit    — at most 1 alert per printer per 24-hour window
+  1. Data freshness  — poll timestamp must not be older than STALE_THRESHOLD_MINUTES
+  2. SNMP quality    — poll_result.snmp_error must be None
+  3. Rate limit      — at most 1 alert per printer per 24-hour window
+  4. LLM confidence  — llm_confidence must meet LLM_CONFIDENCE_THRESHOLD (default 0.7)
+                       when set; None passes through (cold start / LLM failure)
 
 If any check fails, the alert is suppressed and the suppression event is
 appended to the JSONL log via adapters.persistence.append_poll_result().
@@ -21,8 +23,10 @@ Design decisions:
 - _load_alert_state() catches both json.JSONDecodeError and OSError so corrupted
   or permission-denied files degrade gracefully to an empty state.
 - Timestamps always use timezone.utc to avoid naive/aware TypeError.
-- Checks are ordered: freshness → SNMP quality → rate limit. First failure
-  short-circuits; remaining checks are skipped.
+- Checks are ordered: freshness → SNMP quality → rate limit → confidence. First
+  failure short-circuits; remaining checks are skipped.
+- llm_confidence=None passes through the confidence check — cold start and LLM
+  failure cases rely on deterministic threshold alerts and must not be suppressed.
 """
 
 from __future__ import annotations
@@ -60,14 +64,15 @@ def run_policy_guard(
     log_path: Path = persistence.LOG_PATH,
 ) -> "AgentState":
     """
-    Gate all outbound alerts through two independent policy checks.
+    Gate all outbound alerts through four independent policy checks.
 
     If state["alert_needed"] is False, returns state unchanged (no-op).
 
     Check order (short-circuits on first failure):
-      1. Data freshness — poll timestamp age vs. STALE_THRESHOLD_MINUTES
-      2. SNMP quality   — poll_result["snmp_error"] is not None
-      3. Rate limit     — previous alert within last 24 hours
+      1. Data freshness  — poll timestamp age vs. STALE_THRESHOLD_MINUTES
+      2. SNMP quality    — poll_result["snmp_error"] is not None
+      3. Rate limit      — previous alert within last 24 hours
+      4. LLM confidence  — llm_confidence < LLM_CONFIDENCE_THRESHOLD (skipped if None)
 
     On suppression: sets alert_needed=False, sets suppression_reason, appends
     a record to the JSONL log.
@@ -132,7 +137,31 @@ def run_policy_guard(
         return state
 
     state["decision_log"] = state.get("decision_log", []) + [
-        "PolicyGuard: rate limit check passed — alert cleared"
+        "PolicyGuard: rate limit check passed"
+    ]
+
+    # --- Check 4: LLM confidence ---
+    confidence_ok, confidence_reason = check_confidence(state)
+    if not confidence_ok:
+        logger.warning(
+            "Policy guard SUPPRESSED (low confidence): %s — %s",
+            printer_host, confidence_reason,
+        )
+        log_suppression(
+            printer_host,
+            reason=confidence_reason,
+            extra={"confidence": state.get("llm_confidence")},
+            log_path=log_path,
+        )
+        state["alert_needed"] = False
+        state["suppression_reason"] = confidence_reason
+        state["decision_log"] = state.get("decision_log", []) + [
+            f"PolicyGuard: suppressed — {confidence_reason}"
+        ]
+        return state
+
+    state["decision_log"] = state.get("decision_log", []) + [
+        "PolicyGuard: confidence check passed — alert cleared"
     ]
     logger.info("Policy guard CLEARED alert for %s", printer_host)
     return state
@@ -244,6 +273,52 @@ def check_rate_limit(
 
     if elapsed < timedelta(hours=24):
         reason = f"rate_limit: last_alert={last_ts_str}"
+        return False, reason
+
+    return True, None
+
+
+def check_confidence(state: "AgentState") -> tuple[bool, Optional[str]]:
+    """
+    Check LLM confidence meets minimum threshold (4th policy guard check).
+
+    Returns (True, None) when llm_confidence is None — LLM was not called
+    (cold start or LLM failure). These cases fall back to deterministic
+    threshold logic and must NOT be suppressed by the confidence gate.
+
+    Returns:
+        (True, None)  — confidence is acceptable OR LLM was not called.
+        (False, reason_str) — confidence < threshold; include score, reason, and std_dev in reason.
+    """
+    threshold = float(os.getenv("LLM_CONFIDENCE_THRESHOLD", "0.7"))
+    confidence = state.get("llm_confidence")
+
+    if confidence is None:
+        # LLM not called (cold start or LLM failure) — do not block on confidence.
+        # Deterministic fallback alerts are always allowed through.
+        return True, None
+
+    if confidence < threshold:
+        # Derive contributing factor from flagged_colors std_dev if available
+        flagged = state.get("flagged_colors") or []
+        std_devs = [
+            fc.get("std_dev")
+            for fc in flagged
+            if fc.get("std_dev") is not None
+        ]
+        if std_devs:
+            avg_std_dev = sum(std_devs) / len(std_devs)
+            reason = (
+                f"suppressed: confidence={confidence:.2f}, "
+                f"reason=erratic_readings, "
+                f"std_dev={avg_std_dev:.0f}%"
+            )
+        else:
+            reason = (
+                f"suppressed: confidence={confidence:.2f}, "
+                f"reason=low_confidence, "
+                f"threshold={threshold:.2f}"
+            )
         return False, reason
 
     return True, None
