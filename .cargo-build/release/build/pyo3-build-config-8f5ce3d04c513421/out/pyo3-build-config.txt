@@ -1,0 +1,11 @@
+implementation=CPython
+version=3.12
+shared=true
+abi3=false
+lib_name=python3.12
+lib_dir=C:/msys64/ucrt64\libs
+executable=C:/Users/rohit/ROHIT/Project-Sentinel/.venv/bin/python.exe
+pointer_width=64
+build_flags=
+python_framework_prefix=
+suppress_build_script_link_lines=false

@@ -1,0 +1,1 @@
+{"rustc":12702239287987324884,"features":"[]","declared_features":"[\"bench\", \"either\"]","target":2501750852737614978,"profile":15625788057656754760,"path":16775466302236615706,"deps":[],"local":[{"CheckDepInfo":{"dep_info":"release\\.fingerprint\\writeable-08f885cd2e615973\\dep-lib-writeable","checksum":false}}],"rustflags":[],"config":2069994364910194474,"compile_kind":0}
