@@ -5,6 +5,7 @@ Tests cover:
   - _validate_env(): missing required vars, invalid POLL_INTERVAL_MINUTES
   - _build_initial_state(): all 8 AgentState keys at correct defaults
   - run_job() error boundary: exception does not propagate; pipeline_error is logged
+  - run_job() SNMP poll wiring: polls SNMPAdapter, persists PollResult before graph.invoke()
 
 All tests run without real hardware, SMTP, or OpenAI credentials.
 
@@ -170,6 +171,10 @@ class TestRunJobErrorBoundary:
         """
         When graph.invoke() raises an exception, run_job() does not propagate it
         (scheduler stays alive) and append_poll_result is called with event_type=pipeline_error.
+
+        Note: after the Phase 4.1 gap closure, append_poll_result is called twice:
+        once with the poll_result (SNMP-04) and once with event_type=pipeline_error.
+        This test verifies the error boundary event exists in the call list.
         """
         monkeypatch.setenv("SNMP_HOST", "192.168.1.1")
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
@@ -177,6 +182,17 @@ class TestRunJobErrorBoundary:
 
         mock_graph = MagicMock()
         mock_graph.invoke.side_effect = Exception("boom")
+
+        mock_poll_result = {
+            "printer_host": "192.168.1.1",
+            "timestamp": "2026-03-02T10:00:00+00:00",
+            "readings": [],
+            "snmp_error": None,
+            "overall_quality_ok": True,
+        }
+        mock_snmp_instance = MagicMock()
+        mock_snmp_instance.poll.return_value = mock_poll_result
+        mock_snmp_cls = MagicMock(return_value=mock_snmp_instance)
 
         captured_jobs = []
 
@@ -187,7 +203,8 @@ class TestRunJobErrorBoundary:
         mock_scheduler.add_job.side_effect = fake_add_job
         mock_scheduler.start.return_value = None
 
-        with patch("main.build_graph", return_value=mock_graph), \
+        with patch("main.SNMPAdapter", mock_snmp_cls), \
+             patch("main.build_graph", return_value=mock_graph), \
              patch("main.BackgroundScheduler", return_value=mock_scheduler), \
              patch("main.append_poll_result") as mock_append, \
              patch("main.time") as mock_time:
@@ -207,9 +224,178 @@ class TestRunJobErrorBoundary:
             # Calling the job should NOT raise (error boundary active)
             job_fn()
 
-            # append_poll_result should have been called with pipeline_error event
-            mock_append.assert_called_once()
-            call_args = mock_append.call_args[0][0]
-            assert call_args["event_type"] == "pipeline_error"
+            # append_poll_result is called at least once for the pipeline_error event.
+            # (It is also called once for the successful poll_result before graph.invoke.)
+            assert mock_append.call_count >= 1
+            # Find the pipeline_error call in all calls
+            all_calls = mock_append.call_args_list
+            error_calls = [
+                c for c in all_calls
+                if isinstance(c[0][0], dict) and c[0][0].get("event_type") == "pipeline_error"
+            ]
+            assert len(error_calls) == 1, (
+                f"Expected exactly one pipeline_error call; got: {all_calls}"
+            )
+            call_args = error_calls[0][0][0]
             assert call_args["error"] == "boom"
             assert "timestamp" in call_args
+
+
+# ---------------------------------------------------------------------------
+# run_job() SNMP poll wiring tests (Phase 4.1 gap closure)
+# ---------------------------------------------------------------------------
+
+def _run_job_under_patches(monkeypatch, mock_snmp_cls, mock_graph, mock_append,
+                           call_job: bool = True):
+    """
+    Module-level helper: start main() with all dependencies patched, capture
+    the run_job closure, and optionally call it — all within a single patch
+    context so the closured references to main.SNMPAdapter and
+    main.append_poll_result resolve to the mocks.
+
+    Returns (job_fn, mock_snmp_cls, mock_graph, mock_append).
+    """
+    monkeypatch.setenv("SNMP_HOST", "192.168.1.1")
+    monkeypatch.setenv("SNMP_COMMUNITY", "public")
+    monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
+    monkeypatch.delenv("POLL_INTERVAL_MINUTES", raising=False)
+
+    captured_jobs = []
+
+    def fake_add_job(func, **kwargs):
+        captured_jobs.append(func)
+
+    mock_scheduler = MagicMock()
+    mock_scheduler.add_job.side_effect = fake_add_job
+    mock_scheduler.start.return_value = None
+
+    import main as main_module
+
+    with patch("main.SNMPAdapter", mock_snmp_cls), \
+         patch("main.build_graph", return_value=mock_graph), \
+         patch("main.BackgroundScheduler", return_value=mock_scheduler), \
+         patch("main.append_poll_result", mock_append), \
+         patch("main.time") as mock_time:
+        mock_time.sleep.side_effect = KeyboardInterrupt
+        try:
+            main_module.main()
+        except SystemExit:
+            pass
+
+        assert len(captured_jobs) == 1, "Expected add_job to capture exactly one run_job"
+        job_fn = captured_jobs[0]
+
+        if call_job:
+            # Call the closure while patches are still active
+            job_fn()
+
+    return job_fn
+
+
+class TestRunJobSnmpWiring:
+    def test_run_job_polls_snmp_and_injects_into_graph(self, monkeypatch):
+        """
+        run_job() calls SNMPAdapter.poll() exactly once and passes the result as
+        initial_state['poll_result'] to graph.invoke().
+        """
+        mock_poll_result = {
+            "printer_host": "192.168.1.1",
+            "timestamp": "2026-03-02T10:00:00+00:00",
+            "readings": [],
+            "snmp_error": None,
+            "overall_quality_ok": True,
+        }
+        mock_snmp_instance = MagicMock()
+        mock_snmp_instance.poll.return_value = mock_poll_result
+
+        mock_snmp_cls = MagicMock(return_value=mock_snmp_instance)
+        mock_graph = MagicMock()
+        mock_graph.invoke.return_value = {
+            "alert_needed": False,
+            "alert_sent": False,
+            "suppression_reason": None,
+        }
+        mock_append = MagicMock()
+
+        _run_job_under_patches(monkeypatch, mock_snmp_cls, mock_graph, mock_append)
+
+        # SNMPAdapter.poll() must have been called exactly once
+        mock_snmp_instance.poll.assert_called_once()
+
+        # graph.invoke() must have received poll_result == the mock PollResult
+        assert mock_graph.invoke.called, "graph.invoke() was not called"
+        invoked_state = mock_graph.invoke.call_args[0][0]
+        assert invoked_state["poll_result"] == mock_poll_result, (
+            f"Expected poll_result to be injected into state, got: {invoked_state['poll_result']}"
+        )
+
+    def test_run_job_persists_poll_result_before_graph_invoke(self, monkeypatch):
+        """
+        run_job() calls append_poll_result(poll_result) BEFORE graph.invoke() so that
+        history accumulates even if the graph raises.
+        """
+        mock_poll_result = {
+            "printer_host": "192.168.1.1",
+            "timestamp": "2026-03-02T10:00:00+00:00",
+            "readings": [],
+            "snmp_error": None,
+            "overall_quality_ok": True,
+        }
+        mock_snmp_instance = MagicMock()
+        mock_snmp_instance.poll.return_value = mock_poll_result
+
+        mock_snmp_cls = MagicMock(return_value=mock_snmp_instance)
+
+        # Track call order: was append called before invoke?
+        call_order = []
+
+        mock_append = MagicMock(side_effect=lambda *a, **kw: call_order.append("append"))
+        mock_graph = MagicMock()
+        mock_graph.invoke.side_effect = lambda *a, **kw: (
+            call_order.append("invoke") or {
+                "alert_needed": False,
+                "alert_sent": False,
+                "suppression_reason": None,
+            }
+        )
+
+        _run_job_under_patches(monkeypatch, mock_snmp_cls, mock_graph, mock_append)
+
+        # append must appear before invoke in call_order
+        assert "append" in call_order, "append_poll_result was never called on the happy path"
+        assert "invoke" in call_order, "graph.invoke was never called"
+        append_idx = call_order.index("append")
+        invoke_idx = call_order.index("invoke")
+        assert append_idx < invoke_idx, (
+            f"append_poll_result must be called BEFORE graph.invoke(); "
+            f"got call order: {call_order}"
+        )
+
+        # append_poll_result should have been called with the mock PollResult
+        mock_append.assert_called_once_with(mock_poll_result)
+
+    def test_run_job_error_boundary_when_snmp_poll_raises(self, monkeypatch):
+        """
+        When SNMPAdapter.poll() raises, run_job() does NOT propagate the exception.
+        The existing except block fires and appends event_type=pipeline_error.
+        The except block does NOT reference the poll_result variable (no UnboundLocalError).
+        """
+        mock_snmp_instance = MagicMock()
+        mock_snmp_instance.poll.side_effect = RuntimeError("snmp boom")
+
+        mock_snmp_cls = MagicMock(return_value=mock_snmp_instance)
+        mock_graph = MagicMock()
+        mock_append = MagicMock()
+
+        _run_job_under_patches(monkeypatch, mock_snmp_cls, mock_graph, mock_append)
+
+        # append_poll_result should have been called once with event_type=pipeline_error
+        mock_append.assert_called_once()
+        call_arg = mock_append.call_args[0][0]
+        assert call_arg["event_type"] == "pipeline_error", (
+            f"Expected event_type=pipeline_error, got: {call_arg}"
+        )
+        assert "snmp boom" in call_arg["error"]
+
+        # graph.invoke() must NOT have been called (failed before reaching it)
+        mock_graph.invoke.assert_not_called()

@@ -44,6 +44,7 @@ from apscheduler.triggers.interval import IntervalTrigger  # noqa: E402
 # ---------------------------------------------------------------------------
 
 from adapters.persistence import append_poll_result  # noqa: E402
+from adapters.snmp_adapter import SNMPAdapter  # noqa: E402
 from agents.supervisor import build_graph  # noqa: E402
 
 # ---------------------------------------------------------------------------
@@ -167,7 +168,19 @@ def main() -> None:
     def run_job() -> None:
         """Execute one polling cycle — called by APScheduler on each interval."""
         try:
-            state = graph.invoke(_build_initial_state())
+            host = os.getenv("SNMP_HOST", "localhost")
+            community = os.getenv("SNMP_COMMUNITY", "public")
+            snmp = SNMPAdapter(host=host, community=community)
+            poll_result = snmp.poll()
+
+            # Persist every poll to JSONL before graph invoke (SNMP-04)
+            # Must be BEFORE graph.invoke() so history accumulates even if graph raises
+            append_poll_result(poll_result)
+
+            initial_state = _build_initial_state()
+            initial_state["poll_result"] = poll_result
+
+            state = graph.invoke(initial_state)
             logger.info(
                 "Cycle complete: alert_needed=%s alert_sent=%s suppression=%s",
                 state.get("alert_needed"),
