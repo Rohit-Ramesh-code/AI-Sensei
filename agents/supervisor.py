@@ -76,6 +76,8 @@ def run_pipeline(poll_result: Optional[PollResult] = None) -> AgentState:
         "suppression_reason": None,
         "decision_log": [],
         "flagged_colors": None,
+        "llm_confidence": None,    # Phase 3: analyst writes; policy guard reads
+        "llm_reasoning": None,     # Phase 3: analyst writes; communicator reads
     }
 
     # Stage 1: Analyst — determine if any colors are below threshold
