@@ -282,3 +282,82 @@ def test_build_body_without_llm_reasoning_has_fallback_note():
     assert "Note: LLM analysis unavailable" in body, (
         f"Expected fallback note when llm_reasoning=None, got:\n{body}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Phase 4.1 tests — llm_confidence standalone field (ALRT-02 gap closure)
+# ---------------------------------------------------------------------------
+
+def test_build_body_includes_confidence_as_standalone_line():
+    """
+    build_body() with llm_confidence=0.91 and llm_reasoning set produces exactly
+    one line starting with 'Confidence:' containing '91%' — as a distinct line
+    separate from the 'Analysis:' line.
+    """
+    from agents.communicator import build_body
+    flagged = [{"color": "cyan", "urgency": "CRITICAL", "display_value": "8.0%"}]
+    reasoning = "Cyan toner declining fast."
+    body = build_body(
+        "192.168.1.100",
+        flagged,
+        llm_reasoning=reasoning,
+        llm_confidence=0.91,
+    )
+    lines = body.splitlines()
+    confidence_lines = [ln for ln in lines if ln.startswith("Confidence:")]
+    assert len(confidence_lines) == 1, (
+        f"Expected exactly one 'Confidence:' line, found {len(confidence_lines)}.\nBody:\n{body}"
+    )
+    assert "91%" in confidence_lines[0], (
+        f"Expected '91%' in confidence line, got: {confidence_lines[0]}"
+    )
+    # Verify 'Confidence:' line is separate from 'Analysis:' line
+    analysis_lines = [ln for ln in lines if ln.startswith("Analysis:")]
+    assert len(analysis_lines) == 1, f"Expected one 'Analysis:' line, got: {lines}"
+    # Confidence: must appear before Analysis:
+    conf_idx = lines.index(confidence_lines[0])
+    anlz_idx = lines.index(analysis_lines[0])
+    assert conf_idx < anlz_idx, (
+        f"'Confidence:' line must appear before 'Analysis:' line; got indices {conf_idx}, {anlz_idx}"
+    )
+
+
+def test_run_communicator_threads_llm_confidence_into_body(tmp_path, monkeypatch):
+    """
+    run_communicator() reads state['llm_confidence'] and passes it to build_body()
+    as the llm_confidence kwarg. The resulting email body contains 'Confidence: 85%'.
+    """
+    monkeypatch.setenv("ALERT_RECIPIENT", "admin@example.com")
+    monkeypatch.setenv("USE_MOCK_SMTP", "true")
+    alert_state_file = tmp_path / "alert_state.json"
+    monkeypatch.setattr("guardrails.safety_logic.ALERT_STATE_PATH", alert_state_file)
+
+    flagged = [{"color": "cyan", "urgency": "CRITICAL", "display_value": "8.0%"}]
+    state = {
+        "poll_result": _make_poll_result("192.168.1.100"),
+        "alert_needed": True,
+        "alert_sent": False,
+        "suppression_reason": None,
+        "decision_log": [],
+        "flagged_colors": flagged,
+        "llm_confidence": 0.85,
+        "llm_reasoning": "Some reasoning about toner levels.",
+    }
+
+    captured_bodies = []
+
+    def fake_send_alert(recipient, subject, body):
+        captured_bodies.append(body)
+
+    mock_smtp = MagicMock()
+    mock_smtp.send_alert.side_effect = fake_send_alert
+
+    with patch("agents.communicator.SMTPAdapter", return_value=mock_smtp), \
+         patch("agents.communicator.record_alert_sent"):
+        run_communicator(state)
+
+    assert len(captured_bodies) == 1, "Expected exactly one send_alert call"
+    body = captured_bodies[0]
+    assert "Confidence: 85%" in body, (
+        f"Expected 'Confidence: 85%' in email body, got:\n{body}"
+    )

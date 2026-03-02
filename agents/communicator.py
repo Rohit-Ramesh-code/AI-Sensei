@@ -76,11 +76,23 @@ def build_body(
     printer_host: str,
     flagged_colors: list[dict],
     llm_reasoning: "str | None" = None,
+    llm_confidence: "float | None" = None,
 ) -> str:
     """
     Build the plain-text email body for a toner alert.
 
-    Format (with llm_reasoning):
+    Format (with llm_reasoning and llm_confidence):
+        Printer: {printer_host}
+
+        Low toner detected:
+          {Color}: {display_value} [{urgency}]
+          Recommended action: Order {color} toner
+
+        Confidence: {X}%
+        Analysis:
+        {llm_reasoning}
+
+    Format (with llm_reasoning, no llm_confidence):
         Printer: {printer_host}
 
         Low toner detected:
@@ -100,11 +112,14 @@ def build_body(
         Note: LLM analysis unavailable — alert based on threshold check only.
 
     Args:
-        printer_host:   IP address or hostname of the printer.
-        flagged_colors: List of dicts with keys: color, urgency, display_value.
-        llm_reasoning:  Optional LLM analyst reasoning text. When set, an
-                        "Analysis:" section is appended. When None, the locked
-                        fallback note is appended instead.
+        printer_host:    IP address or hostname of the printer.
+        flagged_colors:  List of dicts with keys: color, urgency, display_value.
+        llm_reasoning:   Optional LLM analyst reasoning text. When set, an
+                         "Analysis:" section is appended. When None, the locked
+                         fallback note is appended instead.
+        llm_confidence:  Optional LLM confidence score (0.0–1.0). When set
+                         alongside llm_reasoning, a "Confidence: X%" line is
+                         emitted before the "Analysis:" section (ALRT-02).
 
     Returns:
         Formatted plain-text email body string.
@@ -120,6 +135,8 @@ def build_body(
         lines.append("")  # blank line between color entries
 
     if llm_reasoning is not None:
+        if llm_confidence is not None:
+            lines.append(f"Confidence: {llm_confidence:.0%}")
         lines.append("Analysis:")
         lines.append(llm_reasoning)
     else:
@@ -174,7 +191,12 @@ def run_communicator(state: AgentState) -> AgentState:
     flagged_colors: list[dict] = state["flagged_colors"] or []
 
     subject = build_subject(flagged_colors)
-    body = build_body(printer_host, flagged_colors, llm_reasoning=state.get("llm_reasoning"))
+    body = build_body(
+        printer_host,
+        flagged_colors,
+        llm_reasoning=state.get("llm_reasoning"),
+        llm_confidence=state.get("llm_confidence"),
+    )
 
     # Instantiate adapter — picks up USE_MOCK_SMTP from environment automatically
     smtp = SMTPAdapter()
