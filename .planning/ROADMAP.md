@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Monitoring Pipeline** - Threshold-based alerts with policy guard and email delivery (completed 2026-03-01)
 - [x] **Phase 3: LLM Analyst** - AI-powered trend analysis, confidence scoring, and natural language reasoning (completed 2026-03-02)
 - [x] **Phase 4: Orchestration** - LangGraph wiring and scheduled autonomous operation (completed 2026-03-02)
+- [ ] **Phase 4.1: Production Pipeline Wiring** - Close audit gaps: wire SNMP poll into scheduler, persist poll history, add confidence field to email (INSERTED — gap closure)
 - [ ] **Phase 5: Web Chat Interface** - Browser-based conversational interface for QC engineers
 
 ## Phase Details
@@ -84,9 +85,25 @@ Plans:
 - [x] 04-01-PLAN.md — LangGraph StateGraph wiring in supervisor.py (build_graph + conditional edges), APScheduler dependency, POLL_INTERVAL_MINUTES env var (completed 2026-03-02)
 - [ ] 04-02-PLAN.md — main.py entry point: env validation, startup banner, BackgroundScheduler with immediate first poll, error boundary, graceful shutdown; tests/test_main.py
 
+### Phase 4.1: Production Pipeline Wiring (INSERTED — gap closure)
+**Goal**: `run_job()` polls the printer on every scheduled cycle, poll history accumulates in JSONL, and the alert email includes a standalone confidence score — closing all P0 and P1 gaps from the v1.0 milestone audit
+**Depends on**: Phase 4
+**Requirements**: SNMP-01, SNMP-04, ALRT-02, ANLZ-04, SCHD-01
+**Gap Closure**: Closes gaps from `.planning/v1.0-MILESTONE-AUDIT.md`
+**Success Criteria** (what must be TRUE):
+  1. `run_job()` calls `SNMPAdapter.poll()` and the result is non-None when passed to `graph.invoke()`
+  2. After each successful SNMP poll, `append_poll_result(poll_result)` writes the toner data to `logs/printer_history.jsonl`
+  3. After 3+ polling cycles, `read_poll_history()` returns ≥3 entries — `compute_color_stats()` produces velocity data for the LLM
+  4. Alert emails include an explicit `Confidence: X%` line when LLM reasoning is available
+  5. All 103+ tests pass with no regressions
+**Plans**: 1 plan
+
+Plans:
+- [ ] 04.1-01-PLAN.md — Wire SNMP poll into run_job(), persist poll results to JSONL, add confidence field to build_body(); update tests
+
 ### Phase 5: Web Chat Interface
 **Goal**: A QC engineer can interact with Sentinel through a browser-based chat, querying status, history, and triggering actions conversationally
-**Depends on**: Phase 4
+**Depends on**: Phase 4.1
 **Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05
 **Success Criteria** (what must be TRUE):
   1. A QC engineer can open a browser to a local URL and see a chat interface
@@ -111,4 +128,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Monitoring Pipeline | 3/3 | Complete    | 2026-03-01 |
 | 3. LLM Analyst | 3/3 | Complete    | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete   | 2026-03-02 |
+| 4.1. Production Pipeline Wiring | 0/1 | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
