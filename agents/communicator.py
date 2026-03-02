@@ -72,20 +72,39 @@ def build_subject(flagged_colors: list[dict]) -> str:
     return f"[Sentinel] {overall_urgency}: Printer toner low \u2014 {color_parts}"
 
 
-def build_body(printer_host: str, flagged_colors: list[dict]) -> str:
+def build_body(
+    printer_host: str,
+    flagged_colors: list[dict],
+    llm_reasoning: "str | None" = None,
+) -> str:
     """
     Build the plain-text email body for a toner alert.
 
-    Format:
+    Format (with llm_reasoning):
         Printer: {printer_host}
 
         Low toner detected:
           {Color}: {display_value} [{urgency}]
           Recommended action: Order {color} toner
 
+        Analysis:
+        {llm_reasoning}
+
+    Format (without llm_reasoning — fallback note):
+        Printer: {printer_host}
+
+        Low toner detected:
+          {Color}: {display_value} [{urgency}]
+          Recommended action: Order {color} toner
+
+        Note: LLM analysis unavailable — alert based on threshold check only.
+
     Args:
-        printer_host:  IP address or hostname of the printer.
+        printer_host:   IP address or hostname of the printer.
         flagged_colors: List of dicts with keys: color, urgency, display_value.
+        llm_reasoning:  Optional LLM analyst reasoning text. When set, an
+                        "Analysis:" section is appended. When None, the locked
+                        fallback note is appended instead.
 
     Returns:
         Formatted plain-text email body string.
@@ -99,6 +118,12 @@ def build_body(printer_host: str, flagged_colors: list[dict]) -> str:
         lines.append(f"  {color.capitalize()}: {display_value} [{urgency}]")
         lines.append(f"  Recommended action: Order {color} toner")
         lines.append("")  # blank line between color entries
+
+    if llm_reasoning is not None:
+        lines.append("Analysis:")
+        lines.append(llm_reasoning)
+    else:
+        lines.append("Note: LLM analysis unavailable — alert based on threshold check only.")
 
     return "\n".join(lines)
 
@@ -149,7 +174,7 @@ def run_communicator(state: AgentState) -> AgentState:
     flagged_colors: list[dict] = state["flagged_colors"] or []
 
     subject = build_subject(flagged_colors)
-    body = build_body(printer_host, flagged_colors)
+    body = build_body(printer_host, flagged_colors, llm_reasoning=state.get("llm_reasoning"))
 
     # Instantiate adapter — picks up USE_MOCK_SMTP from environment automatically
     smtp = SMTPAdapter()
