@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T02:54:34.512Z"
+last_updated: "2026-03-02T05:41:20Z"
 progress:
-  total_phases: 3
+  total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 11
+  completed_plans: 10
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Predict printer supply depletion before it happens -- alerting the right person with enough lead time to act.
-**Current focus:** Phase 3: LLM Analyst
+**Current focus:** Phase 4: Orchestration (LangGraph Wiring + APScheduler)
 
 ## Current Position
 
-Phase: 3 of 5 (LLM Analyst) — COMPLETE
-Plan: 3 of 3 in current phase (03-01, 03-02, 03-03 all complete)
-Status: 03-03 complete — confidence guard (check_confidence as 4th policy check) and communicator analysis section (build_body llm_reasoning) implemented; all 83 tests GREEN; Phase 3 complete
-Last activity: 2026-03-01 -- Implemented check_confidence() and extended build_body() with LLM reasoning section; Phase 3 LLM analyst pipeline fully integrated
+Phase: 4 of 5 (Orchestration) — IN PROGRESS
+Plan: 1 of 2 in current phase (04-01 complete, 04-02 pending)
+Status: 04-01 complete — build_graph() LangGraph StateGraph factory with conditional routing added to supervisor.py; run_pipeline() delegates to graph.invoke(); apscheduler added to requirements.txt; 92 tests GREEN
+Last activity: 2026-03-02 -- Implemented build_graph() with analyst/policy_guard/communicator nodes and conditional edges; removed module-level load_dotenv() from supervisor.py; documented POLL_INTERVAL_MINUTES and USE_MOCK_LLM in .env.example
 
-Progress: [##########] 100% (Phase 3 of 3 plans complete)
+Progress: [#####-----] 50% (Plan 1 of 2 complete in Phase 4)
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Progress: [##########] 100% (Phase 3 of 3 plans complete)
 | Phase 03-llm-analyst | P01 | 46 min | 2 tasks | 5 files |
 | Phase 03-llm-analyst | P02 | 11 min | 2 tasks | 2 files |
 | Phase 03-llm-analyst | P03 | 12 min | 2 tasks | 2 files |
+| Phase 04-orchestration | P01 | 20 min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -97,6 +98,11 @@ Recent decisions affecting current work:
 - [Phase 03-llm-analyst]: check_confidence() passes None through — cold start / LLM failure alerts proceed deterministically without confidence gate
 - [Phase 03-llm-analyst]: build_body() fallback note text locked: 'Note: LLM analysis unavailable — alert based on threshold check only.' — exact from CONTEXT.md
 - [Phase 03-llm-analyst]: std_dev from flagged_colors used in confidence suppression reason: erratic_readings label when std_dev present, low_confidence label otherwise
+- [Phase 04-01]: build_graph() is a factory function not a module-level variable — main.py calls it once at startup and reuses the compiled graph
+- [Phase 04-01]: load_dotenv() removed from supervisor.py module scope — main.py will call it at entry point (Phase 4 architectural decision)
+- [Phase 04-01]: _route_after_analyst and _route_after_policy_guard are named functions not lambdas — clarity and testability
+- [Phase 04-01]: apscheduler>=3.10.0 uses 3.x branch not 4.x alpha — stable 3.11.2 confirmed per RESEARCH.md
+- [Phase 04-01]: USE_MOCK_LLM added to .env.example — Phase 3 mock mode was implemented but undocumented
 
 ### Pending Todos
 
@@ -109,6 +115,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-01
-Stopped at: Completed 03-03-PLAN.md — confidence guard check_confidence() and build_body() llm_reasoning extension implemented; all 83 tests GREEN; Phase 3 (LLM Analyst) complete; ready for Phase 4 (LangGraph Wiring)
+Last session: 2026-03-02
+Stopped at: Completed 04-01-PLAN.md — build_graph() LangGraph StateGraph factory with conditional routing; run_pipeline() delegates to graph.invoke(); apscheduler declared; 92 tests GREEN; ready for Phase 4 Plan 02 (main.py APScheduler entry point)
 Resume file: None

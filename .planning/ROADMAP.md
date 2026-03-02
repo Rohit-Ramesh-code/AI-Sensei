@@ -81,7 +81,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — LangGraph StateGraph wiring in supervisor.py (build_graph + conditional edges), APScheduler dependency, POLL_INTERVAL_MINUTES env var
+- [x] 04-01-PLAN.md — LangGraph StateGraph wiring in supervisor.py (build_graph + conditional edges), APScheduler dependency, POLL_INTERVAL_MINUTES env var (completed 2026-03-02)
 - [ ] 04-02-PLAN.md — main.py entry point: env validation, startup banner, BackgroundScheduler with immediate first poll, error boundary, graceful shutdown; tests/test_main.py
 
 ### Phase 5: Web Chat Interface
@@ -110,5 +110,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation | 2/3 | In Progress (checkpoint) | - |
 | 2. Monitoring Pipeline | 3/3 | Complete    | 2026-03-01 |
 | 3. LLM Analyst | 3/3 | Complete    | 2026-03-02 |
-| 4. Orchestration | 0/2 | Not started | - |
+| 4. Orchestration | 1/2 | In Progress | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
