@@ -7,10 +7,17 @@ Tests cover:
   - run_job() error boundary: exception does not propagate; pipeline_error is logged
 
 All tests run without real hardware, SMTP, or OpenAI credentials.
+
+Import note: _validate_env and _build_initial_state are imported at module level
+(not inside each test function) so that load_dotenv() in main.py does not re-run
+on every test and overwrite monkeypatched env vars.
 """
 
 import pytest
 from unittest.mock import MagicMock, patch
+
+# Import once at module level to avoid re-running load_dotenv() per test.
+from main import _validate_env, _build_initial_state  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -22,8 +29,6 @@ class TestValidateEnv:
         """When SNMP_HOST is unset, exits with code 1 and mentions SNMP_HOST."""
         monkeypatch.delenv("SNMP_HOST", raising=False)
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
-
-        from main import _validate_env
 
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
@@ -37,8 +42,6 @@ class TestValidateEnv:
         monkeypatch.setenv("SNMP_HOST", "192.168.1.1")
         monkeypatch.delenv("ALERT_RECIPIENT", raising=False)
 
-        from main import _validate_env
-
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
 
@@ -50,8 +53,6 @@ class TestValidateEnv:
         """When both SNMP_HOST and ALERT_RECIPIENT are unset, both appear in the exit message."""
         monkeypatch.delenv("SNMP_HOST", raising=False)
         monkeypatch.delenv("ALERT_RECIPIENT", raising=False)
-
-        from main import _validate_env
 
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
@@ -67,8 +68,6 @@ class TestValidateEnv:
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
         monkeypatch.delenv("POLL_INTERVAL_MINUTES", raising=False)
 
-        from main import _validate_env
-
         result = _validate_env()
         assert result == 60
 
@@ -78,8 +77,6 @@ class TestValidateEnv:
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
         monkeypatch.setenv("POLL_INTERVAL_MINUTES", "30")
 
-        from main import _validate_env
-
         result = _validate_env()
         assert result == 30
 
@@ -88,8 +85,6 @@ class TestValidateEnv:
         monkeypatch.setenv("SNMP_HOST", "192.168.1.1")
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
         monkeypatch.setenv("POLL_INTERVAL_MINUTES", "0")
-
-        from main import _validate_env
 
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
@@ -104,8 +99,6 @@ class TestValidateEnv:
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
         monkeypatch.setenv("POLL_INTERVAL_MINUTES", "-5")
 
-        from main import _validate_env
-
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
 
@@ -116,8 +109,6 @@ class TestValidateEnv:
         monkeypatch.setenv("SNMP_HOST", "192.168.1.1")
         monkeypatch.setenv("ALERT_RECIPIENT", "test@example.com")
         monkeypatch.setenv("POLL_INTERVAL_MINUTES", "abc")
-
-        from main import _validate_env
 
         with pytest.raises(SystemExit) as exc_info:
             _validate_env()
@@ -134,8 +125,6 @@ class TestValidateEnv:
 class TestBuildInitialState:
     def test_build_initial_state_has_all_keys(self):
         """_build_initial_state() returns a dict with all 8 AgentState keys at correct defaults."""
-        from main import _build_initial_state
-
         state = _build_initial_state()
 
         # Verify all 8 required keys are present
@@ -160,8 +149,6 @@ class TestBuildInitialState:
 
     def test_build_initial_state_returns_fresh_dict_each_call(self):
         """Each call to _build_initial_state() returns a new dict — no state leaks."""
-        from main import _build_initial_state
-
         state1 = _build_initial_state()
         state2 = _build_initial_state()
 
