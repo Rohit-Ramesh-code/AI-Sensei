@@ -21,3 +21,7 @@ openai>=1.0.0
 
 # Scheduling (Phase 4)
 apscheduler>=3.10.0
+
+# Web chat interface (Phase 5)
+flask>=3.1.0
+ollama>=0.6.0
