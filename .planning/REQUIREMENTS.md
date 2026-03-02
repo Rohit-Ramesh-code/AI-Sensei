@@ -34,7 +34,7 @@
 
 ### Scheduling & Orchestration
 
-- [ ] **SCHD-01**: System runs autonomously on an hourly polling schedule via APScheduler 3.x, requiring no manual trigger after startup
+- [x] **SCHD-01**: System runs autonomously on an hourly polling schedule via APScheduler 3.x, requiring no manual trigger after startup
 
 ### User Interface
 
@@ -95,7 +95,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLZ-03 | Phase 3: LLM Analyst | Complete |
 | ANLZ-04 | Phase 3: LLM Analyst | Complete |
 | GURD-02 | Phase 3: LLM Analyst | Complete |
-| SCHD-01 | Phase 4: Orchestration | Pending |
+| SCHD-01 | Phase 4: Orchestration | Complete |
 | UI-01 | Phase 5: Web Chat Interface | Pending |
 | UI-02 | Phase 5: Web Chat Interface | Pending |
 | UI-03 | Phase 5: Web Chat Interface | Pending |
