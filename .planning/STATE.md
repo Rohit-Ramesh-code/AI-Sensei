@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T06:05:03.930Z"
+last_updated: "2026-03-02T15:44:30.474Z"
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 11
-  completed_plans: 11
+  total_phases: 5
+  completed_phases: 5
+  total_plans: 12
+  completed_plans: 12
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Predict printer supply depletion before it happens -- alerting the right person with enough lead time to act.
-**Current focus:** Phase 4: Orchestration (LangGraph Wiring + APScheduler) — COMPLETE
+**Current focus:** Phase 4.1: Production Pipeline Wiring (Gap Closure) — COMPLETE
 
 ## Current Position
 
-Phase: 4 of 5 (Orchestration) — COMPLETE
-Plan: 2 of 2 in current phase (04-01 complete, 04-02 complete)
-Status: 04-02 complete — main.py APScheduler entry point with env validation, immediate first poll, pipeline error boundary, and graceful shutdown; 103 tests GREEN; Phase 4 complete
-Last activity: 2026-03-02 -- Implemented main.py entry point; fixed safety_logic.py TYPE_CHECKING bug; 11 new test_main.py tests GREEN
+Phase: 4.1 of 5 (Production Pipeline Wiring — Gap Closure) — COMPLETE
+Plan: 1 of 1 in current phase (04.1-01 complete)
+Status: 04.1-01 complete — run_job() polls SNMPAdapter, persists PollResult before graph.invoke(), build_body() emits Confidence: X% line; 108 tests GREEN; all P0/P1 gaps closed
+Last activity: 2026-03-02 -- Closed 3 production wiring gaps: SNMP-01, SNMP-04, ALRT-02, ANLZ-04, SCHD-01
 
-Progress: [##########] 100% (Plan 2 of 2 complete in Phase 4)
+Progress: [##########] 100% (Plan 1 of 1 complete in Phase 4.1)
 
 ## Performance Metrics
 
@@ -57,6 +57,7 @@ Progress: [##########] 100% (Plan 2 of 2 complete in Phase 4)
 | Phase 03-llm-analyst | P03 | 12 min | 2 tasks | 2 files |
 | Phase 04-orchestration | P01 | 20 min | 2 tasks | 3 files |
 | Phase 04-orchestration | P02 | 8 min | 2 tasks | 3 files |
+| Phase 04.1-production-pipeline-wiring | P01 | 5 min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -108,6 +109,10 @@ Recent decisions affecting current work:
 - [Phase 04-orchestration]: build_graph() compiled once in main() before scheduler starts — never inside run_job()
 - [Phase 04-orchestration]: AgentState imported at runtime scope in safety_logic.py — TYPE_CHECKING guard caused NameError in LangGraph 0.2.73 get_type_hints()
 - [Phase 04-orchestration]: Module-level import of test functions in test_main.py — prevents load_dotenv() re-run per test overwriting monkeypatched env vars
+- [Phase 04.1-production-pipeline-wiring]: SNMPAdapter imported at main.py module scope — patched via main.SNMPAdapter in tests
+- [Phase 04.1-production-pipeline-wiring]: run_job() ordering: snmp.poll() -> append_poll_result(poll_result) -> graph.invoke() — history accumulates even if graph raises
+- [Phase 04.1-production-pipeline-wiring]: Confidence: shown only when llm_reasoning is not None; formatted as f'{llm_confidence:.0%}' (0.91 -> '91%')
+- [Phase 04.1-production-pipeline-wiring]: Test helper calls job_fn() inside with patch() context — closured main.SNMPAdapter ref resolves to mock, not real adapter
 
 ### Pending Todos
 
@@ -121,5 +126,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 04-02-PLAN.md — main.py APScheduler entry point; _validate_env(); run_job() error boundary; safety_logic.py TYPE_CHECKING bug fixed; 103 tests GREEN; Phase 4 complete
+Stopped at: Completed 04.1-01-PLAN.md — SNMP poll wiring in run_job(), JSONL persistence ordering, llm_confidence standalone field in build_body(); 108 tests GREEN; Phase 4.1 complete; all P0/P1 gaps closed
 Resume file: None

@@ -7,17 +7,17 @@
 
 ### SNMP Data Collection
 
-- [ ] **SNMP-01**: System polls Lexmark XC2235 for toner percentage per color (Cyan, Magenta, Yellow, Black) via SNMP on a scheduled interval
+- [x] **SNMP-01**: System polls Lexmark XC2235 for toner percentage per color (Cyan, Magenta, Yellow, Black) via SNMP on a scheduled interval
 - [x] **SNMP-02**: SNMP adapter detects and handles Lexmark sentinel values (-2: unknown, -3: below low threshold) and converts them to structured data quality flags rather than raw error values
 - [x] **SNMP-03**: SNMP adapter validates each reading for staleness, null values, and out-of-range results, setting a `data_quality_ok` flag on the output
-- [ ] **SNMP-04**: Every poll result (valid or invalid) is persisted to a JSON Lines history log with timestamp and data quality metadata
+- [x] **SNMP-04**: Every poll result (valid or invalid) is persisted to a JSON Lines history log with timestamp and data quality metadata
 
 ### LLM Analysis
 
 - [x] **ANLZ-01**: LLM Analyst Agent triggers an alert recommendation when any toner color drops below a configurable threshold (default 20%)
 - [x] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0-1.0) alongside its analysis output as a structured field
 - [x] **ANLZ-03**: LLM Analyst Agent produces a natural language explanation of its reasoning that is included in the outbound alert email
-- [ ] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
+- [x] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
 
 ### Policy Guard
 
@@ -29,12 +29,12 @@
 ### Alerting & Communication
 
 - [x] **ALRT-01**: Communicator Agent sends alert emails via Microsoft Exchange Web Services (EWS) using a configured service account
-- [ ] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
+- [x] **ALRT-02**: Alert email includes structured content: printer name, toner color, current percentage, urgency level, LLM confidence score, and LLM reasoning
 - [x] **ALRT-03**: All suppressed alert events are recorded in the history log with reason, timestamp, and the data that triggered the suppression
 
 ### Scheduling & Orchestration
 
-- [ ] **SCHD-01**: System runs autonomously on an hourly polling schedule via APScheduler 3.x, requiring no manual trigger after startup
+- [x] **SCHD-01**: System runs autonomously on an hourly polling schedule via APScheduler 3.x, requiring no manual trigger after startup
 
 ### User Interface
 
@@ -80,22 +80,22 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SNMP-01 | Phase 4.1: Production Pipeline Wiring | Pending |
+| SNMP-01 | Phase 4.1: Production Pipeline Wiring | Complete |
 | SNMP-02 | Phase 1: Foundation | Complete |
 | SNMP-03 | Phase 1: Foundation | Complete |
-| SNMP-04 | Phase 4.1: Production Pipeline Wiring | Pending |
+| SNMP-04 | Phase 4.1: Production Pipeline Wiring | Complete |
 | ALRT-01 | Phase 1: Foundation | Complete |
 | ANLZ-01 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-01 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-03 | Phase 2: Monitoring Pipeline | Complete |
 | GURD-04 | Phase 2: Monitoring Pipeline | Complete |
-| ALRT-02 | Phase 4.1: Production Pipeline Wiring | Pending |
+| ALRT-02 | Phase 4.1: Production Pipeline Wiring | Complete |
 | ALRT-03 | Phase 2: Monitoring Pipeline | Complete |
 | ANLZ-02 | Phase 3: LLM Analyst | Complete |
 | ANLZ-03 | Phase 3: LLM Analyst | Complete |
-| ANLZ-04 | Phase 4.1: Production Pipeline Wiring | Pending |
+| ANLZ-04 | Phase 4.1: Production Pipeline Wiring | Complete |
 | GURD-02 | Phase 3: LLM Analyst | Complete |
-| SCHD-01 | Phase 4.1: Production Pipeline Wiring | Pending |
+| SCHD-01 | Phase 4.1: Production Pipeline Wiring | Complete |
 | UI-01 | Phase 5: Web Chat Interface | Pending |
 | UI-02 | Phase 5: Web Chat Interface | Pending |
 | UI-03 | Phase 5: Web Chat Interface | Pending |
