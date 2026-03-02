@@ -169,8 +169,21 @@ def _toner_dict_from_poll(poll: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def _handle_toner_status() -> dict:
-    """Stub: Returns not-implemented envelope. Plan 02 replaces this."""
-    return _envelope("ok", "toner_status", {"note": "not implemented"})
+    """Live SNMP read — returns per-color CMYK toner levels with status labels.
+
+    USE_MOCK_SNMP is respected internally by SNMPAdapter.poll(), so no special
+    handling is needed here.  Returns an error envelope (status="error") rather
+    than raising on any SNMP failure so the chat UI always gets a JSON response.
+    """
+    host = os.getenv("SNMP_HOST", "127.0.0.1")
+    community = os.getenv("SNMP_COMMUNITY", "public")
+    try:
+        adapter = SNMPAdapter(host, community)
+        poll = adapter.poll()
+        return _envelope("ok", "toner_status", _toner_dict_from_poll(poll))
+    except Exception as exc:
+        logger.exception("toner_status handler error")
+        return _envelope("error", "toner_status", {"message": f"Failed to read toner levels: {exc}"})
 
 
 def _handle_alert_history() -> dict:
