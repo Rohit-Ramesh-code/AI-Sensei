@@ -111,11 +111,12 @@ Plans:
   3. Asking "What alerts fired this week?" returns results drawn from the history log
   4. Asking "Why was the last alert suppressed?" returns a plain-language explanation of the Policy Guard decision (rate limit / confidence / data quality)
   5. The QC engineer can type "Run a check now" and the monitoring pipeline executes on-demand, bypassing the hourly schedule
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
+- [ ] 05-01-PLAN.md — Flask app factory skeleton, Ollama intent classifier, JSON envelope builder, suppression reason translator, HTML chat page, test scaffolding; requirements.txt and .env.example updates
+- [ ] 05-02-PLAN.md — Data query handlers: toner_status (live SNMP), alert_history (last 7 days), suppression_explanation (plain-English Policy Guard reason)
+- [ ] 05-03-PLAN.md — On-demand pipeline trigger (ThreadPoolExecutor 30s timeout) and human verification checkpoint of full browser interface
 
 ## Progress
 
@@ -129,4 +130,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 3. LLM Analyst | 3/3 | Complete    | 2026-03-02 |
 | 4. Orchestration | 2/2 | Complete   | 2026-03-02 |
 | 4.1. Production Pipeline Wiring | 1/1 | Complete   | 2026-03-02 |
-| 5. Web Chat Interface | 0/? | Not started | - |
+| 5. Web Chat Interface | 0/3 | Not started | - |
