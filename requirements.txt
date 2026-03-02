@@ -14,3 +14,7 @@ pytest>=7.0.0
 # LangGraph pipeline (used starting Phase 2, declared here for full environment setup)
 langgraph>=0.2.0
 langchain-core>=0.2.0
+
+# LLM analysis (Phase 3)
+langchain-openai>=0.3.0
+openai>=1.0.0

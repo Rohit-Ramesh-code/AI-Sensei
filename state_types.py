@@ -109,12 +109,20 @@ class AgentState(TypedDict):
     merges log entries from each node instead of overwriting previous entries.
     This is the canonical LangGraph pattern for accumulating list values.
 
+    LLM fields (Phase 3): analyst writes llm_confidence and llm_reasoning;
+    policy guard reads llm_confidence to enforce the confidence threshold;
+    communicator reads llm_reasoning to include the analysis section in the
+    alert email body. Both are None when the LLM was not called (cold start
+    or LLM failure), in which case deterministic fallback logic applies.
+
     poll_result        — Populated by the Monitor node after SNMP poll
     alert_needed       — Set True by the Analyst when toner is below threshold
     alert_sent         — Set True by the Communicator after a successful send
     suppression_reason — Human-readable reason set by Policy Guard when blocked
     decision_log       — Append-only log; each node appends its own entry
     flagged_colors     — List of flagged color dicts from Analyst; None until Analyst runs
+    llm_confidence     — LLM self-reported confidence 0.0–1.0; None when LLM not called
+    llm_reasoning      — 2-3 sentence natural language analysis; None when LLM not called
     """
 
     poll_result: Optional[PollResult]
@@ -123,3 +131,5 @@ class AgentState(TypedDict):
     suppression_reason: Optional[str]
     decision_log: Annotated[list[str], operator.add]
     flagged_colors: Optional[list]  # Pipeline carrier: list of flagged color dicts from Analyst
+    llm_confidence: Optional[float]   # LLM self-reported confidence 0.0–1.0; None when LLM not called (cold start / LLM failure)
+    llm_reasoning: Optional[str]      # 2-3 sentence natural language analysis; None when LLM not called
