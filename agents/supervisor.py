@@ -1,20 +1,30 @@
 """
-agents/supervisor.py — Sequential monitoring pipeline coordinator for Project Sentinel.
+agents/supervisor.py — LangGraph monitoring pipeline orchestrator for Project Sentinel.
 
-Implements run_pipeline(poll_result=None) -> AgentState, which sequences the
-full agent pipeline:
+Exposes:
+  - build_graph() -> CompiledStateGraph  Factory that constructs and compiles the
+    LangGraph StateGraph with all agent nodes and conditional routing. Call once
+    at startup (in main.py) and reuse the returned compiled graph.
+  - run_pipeline(poll_result=None) -> AgentState  Thin delegate to build_graph().invoke().
+    Kept for backward compatibility and direct test/CLI invocation.
 
-    SNMP poll -> analyst -> policy_guard -> communicator
+Graph topology:
+  START -> analyst
+  analyst -> policy_guard   (if alert_needed=True)
+  analyst -> END            (if alert_needed=False)
+  policy_guard -> communicator  (if suppression_reason is None)
+  policy_guard -> END           (if suppression_reason is set)
+  communicator -> END
 
 Design decisions:
-- Phase 2 implementation: plain sequential function, not a LangGraph StateGraph.
-  LangGraph StateGraph wiring is reserved for Phase 4 per the project roadmap.
-- asyncio.run() is used for the async SNMP poll — consistent with the pattern
-  established in Phase 1 (snmp_adapter.py decision log).
-- policy_guard runs only when alert_needed=True (skip if analyst found nothing).
-- communicator runs only when alert_needed=True AND suppression_reason is None
-  (i.e., the policy guard cleared the alert).
-- AgentState is initialised with all required keys before the first agent runs.
+- load_dotenv() is intentionally omitted here — main.py calls it at entry point.
+  (Phase 4 decision: supervisor.py must be importable without side-effects.)
+- build_graph() is a factory function, NOT a module-level variable, so that
+  main.py can call it once at startup and reuse the compiled graph efficiently.
+- run_pipeline() builds a fresh initial AgentState and delegates to
+  build_graph().invoke() — all five test_pipeline.py tests remain GREEN.
+- _route_after_analyst and _route_after_policy_guard are named functions
+  (not lambdas) for clarity and testability.
 
 Environment variables:
   USE_MOCK_SNMP   — Set to 'true' to use mock SNMP fixture data (no real hardware)
@@ -31,8 +41,9 @@ import logging
 import os
 from typing import Optional
 
-from dotenv import load_dotenv
-load_dotenv()
+# load_dotenv() is intentionally omitted here — main.py calls it at entry point.
+
+from langgraph.graph import END, START, StateGraph
 
 from adapters.snmp_adapter import SNMPAdapter
 from agents.analyst import run_analyst
@@ -43,17 +54,77 @@ from state_types import AgentState, PollResult
 logger = logging.getLogger(__name__)
 
 
+# ---------------------------------------------------------------------------
+# Routing functions
+# ---------------------------------------------------------------------------
+
+def _route_after_analyst(state: AgentState) -> str:
+    """Route to policy_guard if alert needed; skip to END otherwise."""
+    return "policy_guard" if state["alert_needed"] else END
+
+
+def _route_after_policy_guard(state: AgentState) -> str:
+    """Route to communicator if not suppressed; skip to END otherwise."""
+    return "communicator" if state["suppression_reason"] is None else END
+
+
+# ---------------------------------------------------------------------------
+# Graph factory
+# ---------------------------------------------------------------------------
+
+def build_graph():
+    """
+    Build and compile the Sentinel monitoring StateGraph.
+
+    Constructs a StateGraph(AgentState) with three agent nodes and conditional
+    routing edges:
+
+      START -> analyst
+      analyst --[alert_needed=True]--> policy_guard
+      analyst --[alert_needed=False]--> END
+      policy_guard --[suppression_reason=None]--> communicator
+      policy_guard --[suppression_reason set]--> END
+      communicator -> END
+
+    Returns:
+        CompiledStateGraph ready to invoke via graph.invoke(initial_state).
+
+    Usage:
+        graph = build_graph()   # Call once at startup
+        result = graph.invoke(initial_state)
+    """
+    workflow = StateGraph(AgentState)
+
+    # Register agent nodes
+    workflow.add_node("analyst", run_analyst)
+    workflow.add_node("policy_guard", run_policy_guard)
+    workflow.add_node("communicator", run_communicator)
+
+    # Entry point
+    workflow.add_edge(START, "analyst")
+
+    # Conditional routing after analyst
+    workflow.add_conditional_edges("analyst", _route_after_analyst)
+
+    # Conditional routing after policy_guard
+    workflow.add_conditional_edges("policy_guard", _route_after_policy_guard)
+
+    # Communicator always ends the graph
+    workflow.add_edge("communicator", END)
+
+    return workflow.compile()
+
+
+# ---------------------------------------------------------------------------
+# Pipeline entry point (thin delegate)
+# ---------------------------------------------------------------------------
+
 def run_pipeline(poll_result: Optional[PollResult] = None) -> AgentState:
     """
-    Run the complete monitoring pipeline in sequence.
+    Run the complete monitoring pipeline via the LangGraph StateGraph.
 
-    Phase 2: Plain sequential function. LangGraph StateGraph wiring is Phase 4.
-
-    Pipeline stages:
-      1. SNMP poll    — if poll_result is None, polls the adapter
-      2. Analyst      — checks toner levels against thresholds
-      3. Policy Guard — validates freshness, SNMP quality, rate limit (if needed)
-      4. Communicator — sends alert email (if guard cleared)
+    Builds a fresh initial AgentState, then delegates to build_graph().invoke().
+    Backward-compatible with Phase 2/3 callers and all existing tests.
 
     Args:
         poll_result: Pre-fetched PollResult to inject. If None, polls the SNMP
@@ -68,8 +139,8 @@ def run_pipeline(poll_result: Optional[PollResult] = None) -> AgentState:
         snmp = SNMPAdapter(host=host, community=community)
         poll_result = snmp.poll()
 
-    # Initialise state with all required keys
-    state: AgentState = {
+    # Build initial state with all required AgentState keys
+    initial_state: AgentState = {
         "poll_result": poll_result,
         "alert_needed": False,
         "alert_sent": False,
@@ -80,16 +151,9 @@ def run_pipeline(poll_result: Optional[PollResult] = None) -> AgentState:
         "llm_reasoning": None,     # Phase 3: analyst writes; communicator reads
     }
 
-    # Stage 1: Analyst — determine if any colors are below threshold
-    state = run_analyst(state)
-
-    # Stage 2: Policy Guard — only run if analyst flagged something
-    if state["alert_needed"]:
-        state = run_policy_guard(state)
-
-    # Stage 3: Communicator — only run if alert cleared all policy checks
-    if state["alert_needed"] and state["suppression_reason"] is None:
-        state = run_communicator(state)
+    # Delegate to compiled graph
+    graph = build_graph()
+    state = graph.invoke(initial_state)
 
     logger.info(
         "Pipeline complete: alert_needed=%s alert_sent=%s suppression=%s",
