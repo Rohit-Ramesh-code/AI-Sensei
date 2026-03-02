@@ -67,8 +67,8 @@ Plans:
 
 Plans:
 - [x] 03-01-PLAN.md — AgentState extension (llm_confidence, llm_reasoning), requirements.txt (langchain-openai, openai), and failing test stubs for all Phase 3 acceptance criteria (completed 2026-03-02)
-- [ ] 03-02-PLAN.md — LLM analyst rewrite in agents/analyst.py: AnalystOutput schema, compute_color_stats(), call_llm_analyst() with fallback, cold start detection, USE_MOCK_LLM mode
-- [ ] 03-03-PLAN.md — Policy guard 4th check (check_confidence) and communicator Analysis email section (build_body llm_reasoning param)
+- [x] 03-02-PLAN.md — LLM analyst rewrite in agents/analyst.py: AnalystOutput schema, compute_color_stats(), call_llm_analyst() with fallback, cold start detection, USE_MOCK_LLM mode
+- [x] 03-03-PLAN.md — Policy guard 4th check (check_confidence) and communicator Analysis email section (build_body llm_reasoning param)
 
 ### Phase 4: Orchestration
 **Goal**: All nodes are wired into a LangGraph StateGraph that runs autonomously on a schedule, requiring no manual trigger after startup
@@ -78,10 +78,11 @@ Plans:
   1. Running `python main.py` starts the system and it polls automatically on the configured hourly interval
   2. The full pipeline (SNMP poll -> analyst -> policy guard -> communicator) executes end-to-end without manual intervention
   3. The system continues running across multiple polling cycles without crashing or leaking state
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: TBD
+- [ ] 04-01-PLAN.md — LangGraph StateGraph wiring in supervisor.py (build_graph + conditional edges), APScheduler dependency, POLL_INTERVAL_MINUTES env var
+- [ ] 04-02-PLAN.md — main.py entry point: env validation, startup banner, BackgroundScheduler with immediate first poll, error boundary, graceful shutdown; tests/test_main.py
 
 ### Phase 5: Web Chat Interface
 **Goal**: A QC engineer can interact with Sentinel through a browser-based chat, querying status, history, and triggering actions conversationally
@@ -109,5 +110,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Foundation | 2/3 | In Progress (checkpoint) | - |
 | 2. Monitoring Pipeline | 3/3 | Complete    | 2026-03-01 |
 | 3. LLM Analyst | 3/3 | Complete    | 2026-03-02 |
-| 4. Orchestration | 0/? | Not started | - |
+| 4. Orchestration | 0/2 | Not started | - |
 | 5. Web Chat Interface | 0/? | Not started | - |
