@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-02T15:48:37.718Z"
+last_updated: "2026-03-02T22:07:00Z"
 progress:
   total_phases: 5
-  completed_phases: 5
-  total_plans: 12
-  completed_plans: 12
+  completed_phases: 4
+  total_plans: 13
+  completed_plans: 13
 ---
 
 # Project State
@@ -18,16 +18,16 @@ progress:
 See: .planning/PROJECT.md (updated 2026-02-28)
 
 **Core value:** Predict printer supply depletion before it happens -- alerting the right person with enough lead time to act.
-**Current focus:** Phase 4.1: Production Pipeline Wiring (Gap Closure) — COMPLETE
+**Current focus:** Phase 5: Web Chat Interface (Plan 1 of 3 complete)
 
 ## Current Position
 
-Phase: 4.1 of 5 (Production Pipeline Wiring — Gap Closure) — COMPLETE
-Plan: 1 of 1 in current phase (04.1-01 complete)
-Status: 04.1-01 complete — run_job() polls SNMPAdapter, persists PollResult before graph.invoke(), build_body() emits Confidence: X% line; 108 tests GREEN; all P0/P1 gaps closed
-Last activity: 2026-03-02 -- Closed 3 production wiring gaps: SNMP-01, SNMP-04, ALRT-02, ANLZ-04, SCHD-01
+Phase: 5 of 5 (Web Chat Interface)
+Plan: 1 of 3 in current phase (05-01 complete)
+Status: 05-01 complete — Flask app factory, Ollama intent classifier, JSON envelope, suppression translator, HTML chat page, 5 scaffold tests; 113 tests GREEN
+Last activity: 2026-03-02 -- Built chat_server.py skeleton with create_app(), classify_intent(), _envelope(), _plain_english(), _toner_dict_from_poll(); templates/chat.html
 
-Progress: [##########] 100% (Plan 1 of 1 complete in Phase 4.1)
+Progress: [###.......] 33% (Plan 1 of 3 complete in Phase 5)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ Progress: [##########] 100% (Plan 1 of 1 complete in Phase 4.1)
 | Phase 04-orchestration | P01 | 20 min | 2 tasks | 3 files |
 | Phase 04-orchestration | P02 | 8 min | 2 tasks | 3 files |
 | Phase 04.1-production-pipeline-wiring | P01 | 5 min | 2 tasks | 4 files |
+| Phase 05-web-chat-interface | P01 | 4 min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -113,6 +114,10 @@ Recent decisions affecting current work:
 - [Phase 04.1-production-pipeline-wiring]: run_job() ordering: snmp.poll() -> append_poll_result(poll_result) -> graph.invoke() — history accumulates even if graph raises
 - [Phase 04.1-production-pipeline-wiring]: Confidence: shown only when llm_reasoning is not None; formatted as f'{llm_confidence:.0%}' (0.91 -> '91%')
 - [Phase 04.1-production-pipeline-wiring]: Test helper calls job_fn() inside with patch() context — closured main.SNMPAdapter ref resolves to mock, not real adapter
+- [Phase 05-01]: load_dotenv() called as first line inside create_app() — prevents test isolation issues when monkeypatch sets env vars before factory runs
+- [Phase 05-01]: Project imports (SNMPAdapter, read_poll_history, run_pipeline) placed at module top level so tests can patch chat_server.SNMPAdapter etc. at module scope
+- [Phase 05-01]: Client(host=os.getenv("OLLAMA_BASE_URL", ...)) always explicit — never relies on library's implicit OLLAMA_HOST env var
+- [Phase 05-01]: _plain_english() uses prefix/substring matching — suppression_reason strings are dynamic (e.g. "rate_limit: last_alert=2026-03-01T...")
 
 ### Pending Todos
 
@@ -126,5 +131,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-03-02
-Stopped at: Completed 04.1-01-PLAN.md — SNMP poll wiring in run_job(), JSONL persistence ordering, llm_confidence standalone field in build_body(); 108 tests GREEN; Phase 4.1 complete; all P0/P1 gaps closed
+Stopped at: Completed 05-01-PLAN.md — Flask chat server skeleton: create_app(), classify_intent(), _envelope(), _plain_english(), _toner_dict_from_poll(); templates/chat.html; 5 scaffold tests; 113 tests GREEN
 Resume file: None

@@ -38,7 +38,7 @@
 
 ### User Interface
 
-- [ ] **UI-01**: System provides a browser-accessible web chat interface (Flask or FastAPI) through which a Quality Controls engineer can interact with Sentinel conversationally
+- [x] **UI-01**: System provides a browser-accessible web chat interface (Flask or FastAPI) through which a Quality Controls engineer can interact with Sentinel conversationally
 - [ ] **UI-02**: QC engineer can ask for current toner status and receive a live SNMP reading per color (CMYK) in response
 - [ ] **UI-03**: QC engineer can query alert history ("What alerts fired this week?") and receive results drawn from the history log
 - [ ] **UI-04**: QC engineer can ask why an alert was suppressed and receive a plain-language explanation of the Policy Guard's decision (rate limit / confidence / data quality)
@@ -96,7 +96,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ANLZ-04 | Phase 4.1: Production Pipeline Wiring | Complete |
 | GURD-02 | Phase 3: LLM Analyst | Complete |
 | SCHD-01 | Phase 4.1: Production Pipeline Wiring | Complete |
-| UI-01 | Phase 5: Web Chat Interface | Pending |
+| UI-01 | Phase 5: Web Chat Interface | Complete |
 | UI-02 | Phase 5: Web Chat Interface | Pending |
 | UI-03 | Phase 5: Web Chat Interface | Pending |
 | UI-04 | Phase 5: Web Chat Interface | Pending |
