@@ -56,6 +56,8 @@ def _make_state(poll_result=None) -> dict:
         "suppression_reason": None,
         "decision_log": [],
         "flagged_colors": None,
+        "llm_confidence": None,    # NEW (Phase 3)
+        "llm_reasoning": None,     # NEW (Phase 3)
     }
 
 
@@ -297,3 +299,81 @@ def test_multiple_low_colors_all_appear_in_flagged_colors():
     finally:
         os.environ.pop("TONER_ALERT_THRESHOLD", None)
         os.environ.pop("TONER_CRITICAL_THRESHOLD", None)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 stub tests — RED state (will pass after Plan 02 implements LLM logic)
+# ---------------------------------------------------------------------------
+
+def test_llm_output_has_confidence_score():
+    """run_analyst with USE_MOCK_LLM=true sets llm_confidence to a float 0.0-1.0."""
+    os.environ["USE_MOCK_LLM"] = "true"
+    try:
+        from agents.analyst import run_analyst
+        readings = [_make_reading("cyan", "ok", 12.0, True),
+                    _make_reading("magenta", "ok", 80.0, True),
+                    _make_reading("yellow", "ok", 80.0, True),
+                    _make_reading("black", "ok", 80.0, True)]
+        state = _make_state(poll_result=_make_poll(readings))
+        result = run_analyst(state)
+        assert result["llm_confidence"] is not None, "Expected llm_confidence set by LLM analyst"
+        assert 0.0 <= result["llm_confidence"] <= 1.0, f"Expected float in [0,1], got {result['llm_confidence']}"
+    finally:
+        os.environ.pop("USE_MOCK_LLM", None)
+
+
+def test_cold_start_falls_back_to_deterministic():
+    """Fewer than 3 history readings → LLM not called; llm_confidence=None; alert_needed still set."""
+    os.environ["USE_MOCK_LLM"] = "false"
+    try:
+        from agents.analyst import run_analyst
+        readings = [_make_reading("cyan", "ok", 12.0, True),
+                    _make_reading("magenta", "ok", 80.0, True),
+                    _make_reading("yellow", "ok", 80.0, True),
+                    _make_reading("black", "ok", 80.0, True)]
+        state = _make_state(poll_result=_make_poll(readings))
+        # No history file → cold start → deterministic fallback
+        result = run_analyst(state)
+        assert result["alert_needed"] is True, "Cold start should still alert on threshold"
+        assert result["llm_confidence"] is None, "Cold start: llm_confidence must be None"
+        assert result["llm_reasoning"] is None, "Cold start: llm_reasoning must be None"
+    finally:
+        os.environ.pop("USE_MOCK_LLM", None)
+
+
+def test_llm_failure_falls_back_to_deterministic():
+    """LLM API error → llm_confidence=None, llm_reasoning=None; deterministic alert still fires."""
+    # Force a connection failure by pointing at an unreachable URL (no Ollama running locally)
+    os.environ["OLLAMA_BASE_URL"] = "http://127.0.0.1:19999/v1"  # nothing listening here
+    os.environ["USE_MOCK_LLM"] = "false"
+    try:
+        from agents.analyst import run_analyst
+        readings = [_make_reading("cyan", "ok", 12.0, True),
+                    _make_reading("magenta", "ok", 80.0, True),
+                    _make_reading("yellow", "ok", 80.0, True),
+                    _make_reading("black", "ok", 80.0, True)]
+        state = _make_state(poll_result=_make_poll(readings))
+        result = run_analyst(state)
+        assert result["llm_confidence"] is None, "LLM failure: llm_confidence must be None"
+        assert result["llm_reasoning"] is None, "LLM failure: llm_reasoning must be None"
+        assert result["alert_needed"] is True, "LLM failure fallback should still alert on threshold"
+    finally:
+        os.environ.pop("USE_MOCK_LLM", None)
+        os.environ.pop("OLLAMA_BASE_URL", None)
+
+
+def test_velocity_affects_trend_label():
+    """Mock LLM analyst returns a trend_label; fast decline produces 'Declining rapidly'."""
+    os.environ["USE_MOCK_LLM"] = "true"
+    try:
+        from agents.analyst import run_analyst
+        readings = [_make_reading("cyan", "ok", 8.0, True),
+                    _make_reading("magenta", "ok", 80.0, True),
+                    _make_reading("yellow", "ok", 80.0, True),
+                    _make_reading("black", "ok", 80.0, True)]
+        state = _make_state(poll_result=_make_poll(readings))
+        result = run_analyst(state)
+        reasoning = result.get("llm_reasoning") or ""
+        assert len(reasoning) > 0, "Expected non-empty llm_reasoning when LLM runs"
+    finally:
+        os.environ.pop("USE_MOCK_LLM", None)

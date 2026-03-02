@@ -64,6 +64,8 @@ def _make_state(
         "suppression_reason": None,
         "decision_log": [],
         "flagged_colors": flagged_colors or [],
+        "llm_confidence": None,  # NEW (Phase 3)
+        "llm_reasoning": None,   # NEW (Phase 3)
     }
 
 
@@ -245,3 +247,38 @@ def test_run_communicator_raises_on_missing_recipient(monkeypatch):
 
     with pytest.raises(ValueError, match="ALERT_RECIPIENT"):
         run_communicator(state)
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 stub tests — RED state (will pass after Plan 03 implements llm_reasoning in build_body)
+# ---------------------------------------------------------------------------
+
+def test_build_body_includes_analysis_section():
+    """build_body with llm_reasoning set includes an 'Analysis:' section in the body."""
+    from agents.communicator import build_body
+    flagged = [{"color": "cyan", "urgency": "CRITICAL", "display_value": "12.0%"}]
+    reasoning = "Cyan toner dropped from 45% to 12% over 4 days. Depletion estimated in ~1 day. Confidence: 0.91."
+    body = build_body("192.168.1.100", flagged, llm_reasoning=reasoning)
+    assert "Analysis:" in body, f"Expected 'Analysis:' section in body, got:\n{body}"
+    assert "Confidence:" in body, f"Expected 'Confidence:' in body, got:\n{body}"
+    assert reasoning in body or "Cyan toner" in body, "Expected reasoning text in body"
+
+
+def test_build_body_without_llm_reasoning_omits_analysis_section():
+    """build_body with llm_reasoning=None does NOT include an 'Analysis:' section."""
+    from agents.communicator import build_body
+    flagged = [{"color": "cyan", "urgency": "CRITICAL", "display_value": "12.0%"}]
+    body = build_body("192.168.1.100", flagged, llm_reasoning=None)
+    assert "Analysis:" not in body, (
+        f"Expected no 'Analysis:' section when llm_reasoning=None, got:\n{body}"
+    )
+
+
+def test_build_body_without_llm_reasoning_has_fallback_note():
+    """build_body with llm_reasoning=None includes the LLM-unavailable fallback note."""
+    from agents.communicator import build_body
+    flagged = [{"color": "cyan", "urgency": "CRITICAL", "display_value": "12.0%"}]
+    body = build_body("192.168.1.100", flagged, llm_reasoning=None)
+    assert "Note: LLM analysis unavailable" in body, (
+        f"Expected fallback note when llm_reasoning=None, got:\n{body}"
+    )

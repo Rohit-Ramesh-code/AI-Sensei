@@ -69,6 +69,8 @@ def make_agent_state(
         "alert_sent": False,
         "suppression_reason": None,
         "decision_log": [],
+        "llm_confidence": None,  # NEW (Phase 3)
+        "llm_reasoning": None,   # NEW (Phase 3)
     }
 
 
@@ -349,3 +351,42 @@ def test_run_policy_guard_noop_when_alert_not_needed(tmp_path: Path) -> None:
     )
     # No log entry written (no suppression occurred)
     assert not log_path.exists(), "No JSONL record must be written when alert_needed=False"
+
+
+# ---------------------------------------------------------------------------
+# Phase 3 stub tests — RED state (will pass after Plan 03 implements confidence check)
+# ---------------------------------------------------------------------------
+
+def test_low_confidence_suppresses_alert(tmp_path):
+    """Policy guard suppresses alert when llm_confidence < LLM_CONFIDENCE_THRESHOLD."""
+    from guardrails.safety_logic import run_policy_guard
+    os.environ["LLM_CONFIDENCE_THRESHOLD"] = "0.7"
+    try:
+        state = make_agent_state()
+        state["llm_confidence"] = 0.50  # below threshold
+        result = run_policy_guard(state, state_path=tmp_path / "alert_state.json",
+                                  log_path=tmp_path / "history.jsonl")
+        assert result["alert_needed"] is False, "Low confidence should suppress alert"
+        assert result["suppression_reason"] is not None, "Suppression reason must be set"
+        assert "confidence" in result["suppression_reason"], (
+            f"Expected 'confidence' in suppression_reason, got: {result['suppression_reason']!r}"
+        )
+    finally:
+        os.environ.pop("LLM_CONFIDENCE_THRESHOLD", None)
+
+
+def test_none_confidence_does_not_suppress_alert(tmp_path):
+    """Policy guard does NOT suppress alert when llm_confidence is None (cold start/LLM failure)."""
+    from guardrails.safety_logic import run_policy_guard
+    os.environ["LLM_CONFIDENCE_THRESHOLD"] = "0.7"
+    try:
+        state = make_agent_state()
+        state["llm_confidence"] = None  # LLM not called
+        result = run_policy_guard(state, state_path=tmp_path / "alert_state.json",
+                                  log_path=tmp_path / "history.jsonl")
+        # None confidence = LLM not called = pass through, do not suppress
+        assert result["alert_needed"] is True, (
+            "None confidence (cold start/failure) must NOT suppress alert"
+        )
+    finally:
+        os.environ.pop("LLM_CONFIDENCE_THRESHOLD", None)
