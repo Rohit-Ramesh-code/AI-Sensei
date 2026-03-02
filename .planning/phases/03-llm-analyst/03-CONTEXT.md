@@ -69,12 +69,20 @@ Transform the existing deterministic threshold checker (analyst.py) into an LLM-
 - LLM failure is logged to printer_history.jsonl as event_type=llm_failure with timestamp and error details
 - Python logger also receives the error (in addition to JSONL log)
 
+### LLM backend
+- Ollama running on a separate powerful machine, accessed remotely via its OpenAI-compatible API endpoint
+- Use `langchain-openai` (`ChatOpenAI`) — no new package needed; point `base_url` at the Ollama server
+- Environment variables: `OLLAMA_BASE_URL` (e.g. `http://192.168.x.x:11434/v1`), `OLLAMA_MODEL` (e.g. `llama3.2`), `OLLAMA_API_KEY` (dummy value, default `"ollama"`)
+- `with_structured_output(method="json_schema")` support is model-dependent — test with the chosen model; fall back to `method="json_mode"` if `json_schema` is unsupported
+- No `OPENAI_API_KEY` required — Ollama does not use OpenAI authentication
+
 ### Claude's Discretion
 - Specific LLM prompt structure and system/user message design
 - How std_dev threshold is defined for "erratic readings"
 - How to handle partial confidence factors (e.g. when only some colors are erratic)
 - Token budget / context window management for 168-entry history
 - AgentState field names for the new confidence score and LLM reasoning fields
+- Whether to use `method="json_schema"` or `method="json_mode"` based on what the chosen Ollama model supports
 
 </decisions>
 
