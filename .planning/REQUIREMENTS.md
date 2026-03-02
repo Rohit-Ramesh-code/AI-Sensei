@@ -15,14 +15,14 @@
 ### LLM Analysis
 
 - [x] **ANLZ-01**: LLM Analyst Agent triggers an alert recommendation when any toner color drops below a configurable threshold (default 20%)
-- [ ] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0-1.0) alongside its analysis output as a structured field
-- [ ] **ANLZ-03**: LLM Analyst Agent produces a natural language explanation of its reasoning that is included in the outbound alert email
-- [ ] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
+- [x] **ANLZ-02**: LLM Analyst Agent self-reports a confidence score (0.0-1.0) alongside its analysis output as a structured field
+- [x] **ANLZ-03**: LLM Analyst Agent produces a natural language explanation of its reasoning that is included in the outbound alert email
+- [x] **ANLZ-04**: LLM Analyst Agent applies trend-aware urgency — fast-dropping toner (high depletion velocity) is flagged with higher urgency than slow decline at the same level
 
 ### Policy Guard
 
 - [x] **GURD-01**: Policy Guard enforces a maximum of 1 alert email per printer per 24-hour window, suppressing duplicates regardless of polling frequency
-- [ ] **GURD-02**: Policy Guard blocks alert sending if the LLM Analyst's confidence score falls below the configured minimum threshold (default 0.7)
+- [x] **GURD-02**: Policy Guard blocks alert sending if the LLM Analyst's confidence score falls below the configured minimum threshold (default 0.7)
 - [x] **GURD-03**: Policy Guard blocks alert sending if the SNMP data quality check failed (stale, null, or sentinel value not resolved)
 - [x] **GURD-04**: Every suppressed alert is logged with its suppression reason (rate limit hit / confidence too low / data quality failed) to the history log
 
@@ -91,10 +91,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | GURD-04 | Phase 2: Monitoring Pipeline | Complete |
 | ALRT-02 | Phase 2: Monitoring Pipeline | Complete |
 | ALRT-03 | Phase 2: Monitoring Pipeline | Complete |
-| ANLZ-02 | Phase 3: LLM Analyst | Pending |
-| ANLZ-03 | Phase 3: LLM Analyst | Pending |
-| ANLZ-04 | Phase 3: LLM Analyst | Pending |
-| GURD-02 | Phase 3: LLM Analyst | Pending |
+| ANLZ-02 | Phase 3: LLM Analyst | Complete |
+| ANLZ-03 | Phase 3: LLM Analyst | Complete |
+| ANLZ-04 | Phase 3: LLM Analyst | Complete |
+| GURD-02 | Phase 3: LLM Analyst | Complete |
 | SCHD-01 | Phase 4: Orchestration | Pending |
 | UI-01 | Phase 5: Web Chat Interface | Pending |
 | UI-02 | Phase 5: Web Chat Interface | Pending |
