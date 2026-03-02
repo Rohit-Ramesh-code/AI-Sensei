@@ -40,9 +40,10 @@ from typing import TYPE_CHECKING, Optional
 
 import adapters.persistence as persistence
 from adapters.persistence import append_poll_result
+from state_types import AgentState, PollResult  # runtime import for LangGraph type hint resolution
 
 if TYPE_CHECKING:
-    from state_types import AgentState, PollResult
+    pass  # AgentState and PollResult imported above for both runtime and type checking
 
 # ---------------------------------------------------------------------------
 # Module constants
