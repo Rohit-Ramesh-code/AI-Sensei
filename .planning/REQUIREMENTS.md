@@ -42,7 +42,7 @@
 - [x] **UI-02**: QC engineer can ask for current toner status and receive a live SNMP reading per color (CMYK) in response
 - [x] **UI-03**: QC engineer can query alert history ("What alerts fired this week?") and receive results drawn from the history log
 - [x] **UI-04**: QC engineer can ask why an alert was suppressed and receive a plain-language explanation of the Policy Guard's decision (rate limit / confidence / data quality)
-- [ ] **UI-05**: QC engineer can manually trigger the monitoring pipeline on-demand via the chat interface, bypassing the hourly schedule
+- [x] **UI-05**: QC engineer can manually trigger the monitoring pipeline on-demand via the chat interface, bypassing the hourly schedule
 
 ## v2 Requirements
 
@@ -100,7 +100,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | UI-02 | Phase 5: Web Chat Interface | Complete |
 | UI-03 | Phase 5: Web Chat Interface | Complete |
 | UI-04 | Phase 5: Web Chat Interface | Complete |
-| UI-05 | Phase 5: Web Chat Interface | Pending |
+| UI-05 | Phase 5: Web Chat Interface | Complete |
 
 **Coverage:**
 - v1 requirements: 21 total
