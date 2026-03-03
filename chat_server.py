@@ -131,8 +131,23 @@ def classify_intent(message: str) -> str:
         return action if action in VALID_ACTIONS else "unknown"
     except Exception:
         # Ollama unreachable, malformed JSON, or unexpected response shape.
-        logger.warning("classify_intent: Ollama call failed -- returning 'unknown'", exc_info=True)
-        return "unknown"
+        # Fall back to keyword matching so the UI remains functional.
+        logger.warning("classify_intent: Ollama call failed -- falling back to keyword match", exc_info=True)
+        return _keyword_classify(message)
+
+
+def _keyword_classify(message: str) -> str:
+    """Keyword fallback when Ollama is unreachable."""
+    m = message.lower()
+    if any(w in m for w in ("toner", "level", "ink", "cmyk", "cyan", "magenta", "yellow", "black")):
+        return "toner_status"
+    if any(w in m for w in ("alert", "history", "fired", "week", "sent", "notification")):
+        return "alert_history"
+    if any(w in m for w in ("suppressed", "suppression", "why", "blocked", "not sent", "skipped")):
+        return "suppression_explanation"
+    if any(w in m for w in ("run", "check", "trigger", "now", "manual", "force", "execute")):
+        return "trigger_pipeline"
+    return "unknown"
 
 
 def _toner_dict_from_poll(poll: dict) -> dict:
@@ -263,6 +278,7 @@ def _handle_trigger_pipeline() -> dict:
         "alert_sent": state.get("alert_sent"),
         "suppression_reason": _plain_english(state.get("suppression_reason")),
         "toner": toner,
+        "llm_confidence": state.get("llm_confidence"),
         "llm_reasoning": state.get("llm_reasoning"),
     })
 

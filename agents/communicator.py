@@ -134,9 +134,12 @@ def build_body(
         lines.append(f"  Recommended action: Order {color} toner")
         lines.append("")  # blank line between color entries
 
+    if llm_confidence is not None:
+        lines.append(f"Confidence: {llm_confidence:.0%}")
+    else:
+        lines.append("Confidence: N/A (threshold-based check)")
+
     if llm_reasoning is not None:
-        if llm_confidence is not None:
-            lines.append(f"Confidence: {llm_confidence:.0%}")
         lines.append("Analysis:")
         lines.append(llm_reasoning)
     else:
