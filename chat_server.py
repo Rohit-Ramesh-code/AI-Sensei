@@ -231,8 +231,40 @@ def _handle_suppression_explanation() -> dict:
 
 
 def _handle_trigger_pipeline() -> dict:
-    """Stub: Returns not-implemented envelope. Plan 03 replaces this."""
-    return _envelope("ok", "trigger_pipeline", {"note": "not implemented"})
+    """Run the full LangGraph pipeline in a thread with a 30-second timeout.
+
+    Uses ThreadPoolExecutor (Windows-compatible — signal.alarm() is not available
+    on Windows).  On timeout, returns an error envelope; the background thread
+    continues running and its result will be persisted normally.
+
+    Returns a structured envelope containing:
+        alert_needed, alert_sent, suppression_reason (plain English),
+        toner (per-color dict or None), llm_reasoning.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(run_pipeline)
+        try:
+            state = future.result(timeout=30)
+        except TimeoutError:
+            return _envelope("error", "trigger_pipeline", {
+                "message": "Pipeline timed out after 30 seconds"
+            })
+        except Exception as exc:
+            logger.exception("trigger_pipeline handler error")
+            return _envelope("error", "trigger_pipeline", {
+                "message": f"Pipeline error: {exc}"
+            })
+
+    poll = state.get("poll_result")
+    toner = _toner_dict_from_poll(poll) if poll else None
+
+    return _envelope("ok", "trigger_pipeline", {
+        "alert_needed": state.get("alert_needed"),
+        "alert_sent": state.get("alert_sent"),
+        "suppression_reason": _plain_english(state.get("suppression_reason")),
+        "toner": toner,
+        "llm_reasoning": state.get("llm_reasoning"),
+    })
 
 
 # ---------------------------------------------------------------------------
