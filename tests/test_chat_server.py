@@ -262,3 +262,140 @@ def test_suppression_explanation_low_confidence_returns_plain_english(client, mo
     assert data["status"] == "ok"
     assert data["action"] == "suppression_explanation"
     assert data["data"]["suppression_reason"] == "The LLM's confidence score was too low to trigger an alert reliably."
+
+
+# ---------------------------------------------------------------------------
+# Task 1 (Plan 03): _handle_trigger_pipeline() tests (UI-05)
+# ---------------------------------------------------------------------------
+
+def _make_trigger_agent_state(
+    alert_needed=True,
+    alert_sent=False,
+    suppression_reason="rate_limit: last_alert=2026-03-01T10:00:00+00:00",
+    llm_reasoning="Magenta is critically low at 5%",
+    llm_confidence=0.91,
+    include_poll=True,
+):
+    """Return a minimal AgentState dict for trigger_pipeline handler tests."""
+    poll = None
+    if include_poll:
+        poll = {
+            "printer_host": "127.0.0.1",
+            "timestamp": "2026-03-02T10:00:00+00:00",
+            "readings": [
+                {"color": "cyan",    "toner_pct": 45.0, "quality_flag": "ok", "data_quality_ok": True},
+                {"color": "magenta", "toner_pct":  5.0, "quality_flag": "ok", "data_quality_ok": True},
+                {"color": "yellow",  "toner_pct": 78.0, "quality_flag": "ok", "data_quality_ok": True},
+                {"color": "black",   "toner_pct": 30.0, "quality_flag": "ok", "data_quality_ok": True},
+            ],
+            "overall_quality_ok": True,
+        }
+    return {
+        "alert_needed": alert_needed,
+        "alert_sent": alert_sent,
+        "suppression_reason": suppression_reason,
+        "poll_result": poll,
+        "llm_reasoning": llm_reasoning,
+        "llm_confidence": llm_confidence,
+        "decision_log": [],
+        "flagged_colors": None,
+    }
+
+
+def test_trigger_pipeline_success_returns_ok_envelope(client, monkeypatch):
+    """POST /chat trigger_pipeline with successful run_pipeline call returns 200 with
+    status='ok', action='trigger_pipeline', and data containing alert_needed, alert_sent,
+    suppression_reason (plain English), toner dict, and llm_reasoning."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "trigger_pipeline")
+
+    state = _make_trigger_agent_state()
+    monkeypatch.setattr(chat_server, "run_pipeline", lambda: state)
+
+    response = client.post("/chat", json={"message": "run a check now"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "trigger_pipeline"
+
+    d = data["data"]
+    assert d["alert_needed"] is True
+    assert d["alert_sent"] is False
+    # suppression_reason should be plain English (rate_limit prefix -> 24 hours message)
+    assert d["suppression_reason"] == "An alert was already sent in the last 24 hours."
+    assert d["llm_reasoning"] == "Magenta is critically low at 5%"
+    # toner dict should have CMYK colors
+    assert d["toner"] is not None
+    assert "cyan" in d["toner"]
+    assert "magenta" in d["toner"]
+    assert d["toner"]["magenta"]["pct"] == 5.0
+    assert d["toner"]["magenta"]["status"] == "critical"
+
+
+def test_trigger_pipeline_timeout_returns_error_envelope(client, monkeypatch):
+    """POST /chat trigger_pipeline when run_pipeline raises TimeoutError returns 200
+    with status='error' and data.message containing 'timed out'."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "trigger_pipeline")
+
+    def raise_timeout():
+        raise TimeoutError("future timed out")
+
+    monkeypatch.setattr(chat_server, "run_pipeline", raise_timeout)
+
+    response = client.post("/chat", json={"message": "run check now"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert data["action"] == "trigger_pipeline"
+    assert "timed out" in data["data"]["message"].lower()
+
+
+def test_trigger_pipeline_runtime_error_returns_error_envelope(client, monkeypatch):
+    """POST /chat trigger_pipeline when run_pipeline raises RuntimeError returns 200
+    with status='error' and data.message containing 'Pipeline error'."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "trigger_pipeline")
+
+    def raise_runtime():
+        raise RuntimeError("SNMP failed")
+
+    monkeypatch.setattr(chat_server, "run_pipeline", raise_runtime)
+
+    response = client.post("/chat", json={"message": "run check now"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "error"
+    assert data["action"] == "trigger_pipeline"
+    assert "Pipeline error" in data["data"]["message"]
+
+
+def test_trigger_pipeline_alert_sent_true_in_response(client, monkeypatch):
+    """POST /chat trigger_pipeline where alert_sent=True returns alert_sent=True in response data."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "trigger_pipeline")
+
+    state = _make_trigger_agent_state(alert_needed=True, alert_sent=True, suppression_reason=None)
+    monkeypatch.setattr(chat_server, "run_pipeline", lambda: state)
+
+    response = client.post("/chat", json={"message": "run check now"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["data"]["alert_sent"] is True
+    assert data["data"]["suppression_reason"] is None
+
+
+def test_trigger_pipeline_no_poll_result_returns_toner_none(client, monkeypatch):
+    """POST /chat trigger_pipeline where poll_result is None returns toner=None without crashing."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "trigger_pipeline")
+
+    state = _make_trigger_agent_state(include_poll=False)
+    monkeypatch.setattr(chat_server, "run_pipeline", lambda: state)
+
+    response = client.post("/chat", json={"message": "run check now"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["data"]["toner"] is None
