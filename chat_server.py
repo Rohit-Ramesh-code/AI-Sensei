@@ -187,13 +187,47 @@ def _handle_toner_status() -> dict:
 
 
 def _handle_alert_history() -> dict:
-    """Stub: Returns not-implemented envelope. Plan 02 replaces this."""
-    return _envelope("ok", "alert_history", {"note": "not implemented"})
+    """Return log entries from the last 7 days.
+
+    Reads the full JSONL history via read_poll_history() and filters to entries
+    whose timestamp falls within the last 7 days.  Returns an empty list when the
+    log file does not exist or no entries match.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+    history = read_poll_history()
+    recent = []
+    for entry in history:
+        ts_str = entry.get("timestamp", "")
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            if ts >= cutoff:
+                recent.append(entry)
+        except (ValueError, TypeError):
+            pass  # skip malformed timestamp entries
+    return _envelope("ok", "alert_history", {"entries": recent, "window_days": 7})
 
 
 def _handle_suppression_explanation() -> dict:
-    """Stub: Returns not-implemented envelope. Plan 03 replaces this."""
-    return _envelope("ok", "suppression_explanation", {"note": "not implemented"})
+    """Return a plain-English explanation of the most recent suppressed alert.
+
+    Searches the log history newest-first for any entry with a suppression_reason
+    field.  Translates the raw reason string to human-readable text via
+    _plain_english().  Returns a 'not found' message when no suppression exists.
+    """
+    history = read_poll_history()
+    # Search newest-first for the most recent suppressed entry
+    for entry in reversed(history):
+        reason = entry.get("suppression_reason")
+        if reason:
+            plain = _plain_english(reason)
+            return _envelope("ok", "suppression_explanation", {
+                "suppression_reason": plain,
+                "raw_reason": reason,
+                "timestamp": entry.get("timestamp"),
+            })
+    return _envelope("ok", "suppression_explanation", {
+        "message": "No suppressed alerts found in history."
+    })
 
 
 def _handle_trigger_pipeline() -> dict:
