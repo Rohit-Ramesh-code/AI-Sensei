@@ -7,6 +7,9 @@ Tests cover:
     - POST /chat with empty message returns 400 with error envelope
     - POST /chat with unknown intent returns 200 with unknown_intent envelope and help text
     - classify_intent() returns 'unknown' when Ollama is unreachable (no crash)
+    - _handle_toner_status() returns per-color CMYK dict with pct and status (UI-02)
+    - _handle_alert_history() returns filtered 7-day entries from log (UI-03)
+    - _handle_suppression_explanation() returns plain-English suppression reason (UI-04)
 """
 import pytest
 from unittest.mock import patch, MagicMock
@@ -143,3 +146,119 @@ def test_toner_status_snmp_exception_returns_error_envelope(client, monkeypatch)
     assert "message" in data["data"]
     # Should be user-readable, not a traceback
     assert "Failed to read toner levels" in data["data"]["message"]
+
+
+# ---------------------------------------------------------------------------
+# Task 2: _handle_alert_history() tests (UI-03)
+# ---------------------------------------------------------------------------
+
+def test_alert_history_returns_only_recent_entries(client, monkeypatch):
+    """POST /chat alert_history returns only entries within the last 7 days."""
+    from datetime import datetime, timezone, timedelta
+
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "alert_history")
+
+    now = datetime.now(timezone.utc)
+    recent_entry = {"timestamp": now.isoformat(), "toner_pct": 15.0, "action": "alert_sent"}
+    old_entry_1 = {"timestamp": (now - timedelta(days=10)).isoformat(), "toner_pct": 30.0, "action": "no_alert"}
+    old_entry_2 = {"timestamp": (now - timedelta(days=14)).isoformat(), "toner_pct": 50.0, "action": "no_alert"}
+
+    monkeypatch.setattr(chat_server, "read_poll_history", lambda: [old_entry_1, old_entry_2, recent_entry])
+
+    response = client.post("/chat", json={"message": "show alert history"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "alert_history"
+    entries = data["data"]["entries"]
+    assert len(entries) == 1
+    assert entries[0]["toner_pct"] == 15.0
+    assert data["data"]["window_days"] == 7
+
+
+def test_alert_history_empty_log_returns_empty_list(client, monkeypatch):
+    """POST /chat alert_history with empty log file returns data.entries=[] without error."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "alert_history")
+    monkeypatch.setattr(chat_server, "read_poll_history", lambda: [])
+
+    response = client.post("/chat", json={"message": "alert history"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "alert_history"
+    assert data["data"]["entries"] == []
+    assert data["data"]["window_days"] == 7
+
+
+# ---------------------------------------------------------------------------
+# Task 2: _handle_suppression_explanation() tests (UI-04)
+# ---------------------------------------------------------------------------
+
+def test_suppression_explanation_rate_limit_returns_plain_english(client, monkeypatch):
+    """POST /chat suppression_explanation returns plain-English rate limit message."""
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "suppression_explanation")
+
+    history = [
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "suppression_reason": "rate_limit: last_alert=2026-03-01T10:00:00+00:00",
+        }
+    ]
+    monkeypatch.setattr(chat_server, "read_poll_history", lambda: history)
+
+    response = client.post("/chat", json={"message": "why was alert suppressed"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "suppression_explanation"
+    assert data["data"]["suppression_reason"] == "An alert was already sent in the last 24 hours."
+    assert "raw_reason" in data["data"]
+    assert "timestamp" in data["data"]
+
+
+def test_suppression_explanation_no_suppression_in_history(client, monkeypatch):
+    """POST /chat suppression_explanation returns 'No suppressed alerts found' message when none exist."""
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "suppression_explanation")
+
+    # History entries without suppression_reason
+    history = [
+        {"timestamp": "2026-03-02T10:00:00+00:00", "toner_pct": 25.0},
+        {"timestamp": "2026-03-01T10:00:00+00:00", "toner_pct": 30.0},
+    ]
+    monkeypatch.setattr(chat_server, "read_poll_history", lambda: history)
+
+    response = client.post("/chat", json={"message": "why was alert suppressed"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "suppression_explanation"
+    assert data["data"]["message"] == "No suppressed alerts found in history."
+
+
+def test_suppression_explanation_low_confidence_returns_plain_english(client, monkeypatch):
+    """POST /chat suppression_explanation returns plain-English low_confidence message."""
+    from datetime import datetime, timezone
+
+    monkeypatch.setattr("chat_server.classify_intent", lambda msg: "suppression_explanation")
+
+    history = [
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "suppression_reason": "confidence_check_failed: reason=low_confidence, score=0.45",
+        }
+    ]
+    monkeypatch.setattr(chat_server, "read_poll_history", lambda: history)
+
+    response = client.post("/chat", json={"message": "why was alert suppressed"})
+    assert response.status_code == 200
+
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert data["action"] == "suppression_explanation"
+    assert data["data"]["suppression_reason"] == "The LLM's confidence score was too low to trigger an alert reliably."
