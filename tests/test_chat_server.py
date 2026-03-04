@@ -242,7 +242,8 @@ def test_suppression_explanation_no_suppression_in_history(client, monkeypatch):
 
 
 def test_suppression_explanation_low_confidence_returns_plain_english(client, monkeypatch):
-    """POST /chat suppression_explanation returns plain-English low_confidence message."""
+    """POST /chat suppression_explanation returns plain-English low_confidence message
+    and the llm_confidence score from the log entry."""
     from datetime import datetime, timezone
 
     monkeypatch.setattr("chat_server.classify_intent", lambda msg: "suppression_explanation")
@@ -251,6 +252,7 @@ def test_suppression_explanation_low_confidence_returns_plain_english(client, mo
         {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "suppression_reason": "confidence_check_failed: reason=low_confidence, score=0.45",
+            "confidence": 0.45,
         }
     ]
     monkeypatch.setattr(chat_server, "read_poll_history", lambda: history)
@@ -262,6 +264,7 @@ def test_suppression_explanation_low_confidence_returns_plain_english(client, mo
     assert data["status"] == "ok"
     assert data["action"] == "suppression_explanation"
     assert data["data"]["suppression_reason"] == "The LLM's confidence score was too low to trigger an alert reliably."
+    assert data["data"]["llm_confidence"] == 0.45
 
 
 # ---------------------------------------------------------------------------
@@ -330,6 +333,7 @@ def test_trigger_pipeline_success_returns_ok_envelope(client, monkeypatch):
     assert "magenta" in d["toner"]
     assert d["toner"]["magenta"]["pct"] == 5.0
     assert d["toner"]["magenta"]["status"] == "critical"
+    assert d["llm_confidence"] == 0.91
 
 
 def test_trigger_pipeline_timeout_returns_error_envelope(client, monkeypatch):

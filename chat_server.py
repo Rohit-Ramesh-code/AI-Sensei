@@ -239,6 +239,7 @@ def _handle_suppression_explanation() -> dict:
                 "suppression_reason": plain,
                 "raw_reason": reason,
                 "timestamp": entry.get("timestamp"),
+                "llm_confidence": entry.get("confidence"),
             })
     return _envelope("ok", "suppression_explanation", {
         "message": "No suppressed alerts found in history."
