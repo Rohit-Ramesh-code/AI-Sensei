@@ -76,19 +76,17 @@ AI Sensei is a **linear LangGraph StateGraph pipeline** — not a hub-and-spoke 
 │  │ run_analyst  │───▶│ run_policy_guard │───▶│run_communicator │      │
 │  │ (analyst.py) │    │ (safety_logic   │    │(communicator.py)│      │
 │  │              │    │     .py)        │    │                 │      │
-│  └──────┬───────┘    └───────┬─────────┘    └────────┬────────┘      │
-│         │                   │                        │               │
-│    LLM + threshold     suppressed? ──▶ END      Notification         │
-│    analysis on                              Adapter.send_alert()     │
-│    flagged metrics                                                    │
+│  └──────────────┘    └───────┬─────────┘    └────────┬────────┘      │
+│   - threshold check          │                       │               │
+│   - compute_metric_stats()   suppressed? ──▶ END  Notification       │
+│   - call_llm_analyst()                         Adapter.send_alert()  │
+│     (reads JSONL history,                                            │
+│      calls Ollama)                                                   │
 └──────────────────────────────────────────────────────────────────────┘
-         │
-         │  compute_metric_stats() — velocity, std_dev from history
-         │  call_llm_analyst()     — Ollama structured output
-         ▼
+
 ┌─────────────────────┐        ┌──────────────────────────────────────┐
 │   Sensor Adapter    │        │          Persistence Layer           │
-│   (adapters/)       │        │  logs/metric_history.jsonl           │
+│   (adapters/)       │        │  logs/printer_history.jsonl          │
 │                     │        │  logs/alert_state.json               │
 │  Any data source:   │        │                                      │
 │  • SNMP device      │        │  Append-only JSONL — one record per  │
@@ -96,6 +94,9 @@ AI Sensei is a **linear LangGraph StateGraph pipeline** — not a hub-and-spoke 
 │  • Database query   │        │  or LLM failure event.               │
 │  • IoT sensor feed  │        └──────────────────────────────────────┘
 │  • File / stream    │
+│                     │
+│  Called by run_job()│
+│  before graph starts│
 └─────────────────────┘
 
                           ┌──────────────────────────────┐
@@ -188,13 +189,13 @@ AI-Sensei/
 ├── adapters/
 │   ├── snmp_adapter.py           # Sensor Adapter — SNMP v2c polling with sentinel handling
 │   ├── smtp_adapter.py           # Notification Adapter — SMTP STARTTLS email delivery
-│   └── persistence.py            # JSONL read/write for metric_history.jsonl
+│   └── persistence.py            # JSONL read/write for printer_history.jsonl
 │
 ├── guardrails/
 │   └── safety_logic.py           # Policy Guard — freshness, data quality, rate limit, confidence
 │
 ├── logs/
-│   ├── metric_history.jsonl      # Append-only event log (polls, alerts, suppressions, errors)
+│   ├── printer_history.jsonl      # Append-only event log (polls, alerts, suppressions, errors)
 │   └── alert_state.json          # Per-asset last-alert timestamps (rate limit state)
 │
 ├── templates/
@@ -284,7 +285,7 @@ The Policy Guard is a **pure Python deterministic gate** between the Analyst and
 **Key design decisions:**
 - Check order is cheapest-first: a stale poll is caught in Check 1 without touching disk or the rate limit file
 - A `None` confidence (cold start, LLM offline, LLM failure) **passes** Check 4 — threshold-based alerts proceed unconditionally when LLM is unavailable
-- All suppression events are logged to `metric_history.jsonl` with the exact reason, timestamp, and triggering data — the audit trail is complete regardless of outcome
+- All suppression events are logged to `printer_history.jsonl` with the exact reason, timestamp, and triggering data — the audit trail is complete regardless of outcome
 - The Policy Guard is a graph **node**, not middleware. Its decision is a first-class state field (`suppression_reason`) that is inspectable, loggable, and testable independently
 
 ---
@@ -297,7 +298,7 @@ The Policy Guard is a **pure Python deterministic gate** between the Analyst and
 APScheduler  run_job()
   │
   ├─ SensorAdapter.poll()              →  poll_result  (normalized metric readings)
-  ├─ append_poll_result(poll_result)   →  logs/metric_history.jsonl
+  ├─ append_poll_result(poll_result)   →  logs/printer_history.jsonl
   └─ graph.invoke(initial_state)
        │
        ├─ run_analyst()
@@ -319,7 +320,7 @@ APScheduler  run_job()
 
 ### Suppressed Alert Path
 
-When any Policy Guard check fails, `_route_after_policy_guard()` routes directly to `END`. The suppression reason and the full `decision_log` are persisted to `metric_history.jsonl`. No notification is sent.
+When any Policy Guard check fails, `_route_after_policy_guard()` routes directly to `END`. The suppression reason and the full `decision_log` are persisted to `printer_history.jsonl`. No notification is sent.
 
 ### Pipeline State (AgentState TypedDict)
 
@@ -498,7 +499,7 @@ A conversational operator interface built on Flask. The user's natural language 
 | Intent | Example Queries | Handler |
 |--------|----------------|---------|
 | `metric_status` | "What are the current readings?", "Show system metrics" | Live Sensor Adapter poll → per-channel value + status label |
-| `alert_history` | "What alerts fired this week?", "Show recent alerts" | Last 7 days from `metric_history.jsonl` |
+| `alert_history` | "What alerts fired this week?", "Show recent alerts" | Last 7 days from `printer_history.jsonl` |
 | `suppression_explanation` | "Why was the last alert suppressed?", "What blocked the alert?" | Most recent suppression event → plain-English Policy Guard reason |
 | `trigger_pipeline` | "Run a check now", "Force analysis", "Execute pipeline" | Runs full LangGraph pipeline in a background thread (`PIPELINE_TIMEOUT_SECONDS` timeout) |
 | `anomaly_check` | "Are there any anomalies?", "Is anything wrong?", "Any issues?" | Live Sensor Adapter poll → LLM natural-language anomaly assessment |
@@ -548,7 +549,7 @@ The LLM Analyst operates between two deterministic layers. It cannot trigger an 
 
 ### Persistent, Append-Only Logging
 
-Every system event is appended to `logs/metric_history.jsonl`. JSON Lines format: one JSON object per line, each line independent. A process crash or partial write corrupts at most one line. The log is the single source of truth for rate limiting, trend history, audit, and debugging.
+Every system event is appended to `logs/printer_history.jsonl`. JSON Lines format: one JSON object per line, each line independent. A process crash or partial write corrupts at most one line. The log is the single source of truth for rate limiting, trend history, audit, and debugging.
 
 ### Asset-Agnostic Rate Limiting
 
@@ -633,7 +634,7 @@ Items from the v1.0 milestone audit. None block operation.
 
 ### Operational Hardening
 
-- **OPER-V2-01** — Log rotation to cap `metric_history.jsonl` growth (currently unbounded; one year of hourly polling produces ~35,000 entries)
+- **OPER-V2-01** — Log rotation to cap `printer_history.jsonl` growth (currently unbounded; one year of hourly polling produces ~35,000 entries)
 - **OPER-V2-02** — SQLite backend for rate limit state (replaces `alert_state.json`) to support concurrent multi-asset polling without file-lock races
 - **OPER-V2-03** — Additional Notification Adapter implementations: Slack webhook, MS Teams, PagerDuty, generic HTTP POST
 
