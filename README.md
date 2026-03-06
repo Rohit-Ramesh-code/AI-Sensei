@@ -1,8 +1,8 @@
-# Project Sentinel
+# AI Sensei
 
 > **Detect metric degradation before it causes failure — alerting the right person with enough lead time to act.**
 
-Project Sentinel is a **domain-agnostic hybrid ML/LLM orchestration engine** built on LangGraph. It ingests time-series metrics from any data source via pluggable Sensor Adapters, runs trend analysis through a local LLM Analyst Agent, gates every outbound action through a deterministic Policy Guard, and delivers alerts through pluggable Notification Adapters. A browser-based chat interface lets operators query system status, alert history, and trigger on-demand analysis cycles.
+AI Sensei is a **domain-agnostic hybrid ML/LLM orchestration engine** built on LangGraph. It ingests time-series metrics from any data source via pluggable Sensor Adapters, runs trend analysis through a local LLM Analyst Agent, gates every outbound action through a deterministic Policy Guard, and delivers alerts through pluggable Notification Adapters. A browser-based chat interface lets operators query system status, alert history, and trigger on-demand analysis cycles.
 
 The current reference implementation monitors consumable resource levels on a networked device via SNMP. The same pipeline, unchanged, applies to any domain where metric degradation must be detected and communicated proactively.
 
@@ -33,7 +33,7 @@ The current reference implementation monitors consumable resource levels on a ne
 
 Most monitoring tools answer: **"Is the metric below a threshold right now?"**
 
-Project Sentinel answers: **"At the current rate of change, when will this metric reach a failure state — and is that prediction reliable enough to act on?"**
+AI Sensei answers: **"At the current rate of change, when will this metric reach a failure state — and is that prediction reliable enough to act on?"**
 
 This requires three layers working together:
 
@@ -60,7 +60,7 @@ The LLM is sandwiched between two deterministic layers. It cannot send an alert 
 
 ## System Architecture
 
-Project Sentinel is a **linear LangGraph StateGraph pipeline** — not a hub-and-spoke supervisor. Data flows in one direction through fixed nodes. There is exactly one conditional edge, after the Policy Guard: send or suppress.
+AI Sensei is a **linear LangGraph StateGraph pipeline** — not a hub-and-spoke supervisor. Data flows in one direction through fixed nodes. There is exactly one conditional edge, after the Policy Guard: send or suppress.
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -171,7 +171,7 @@ class NotificationAdapter:
 ## Directory Structure
 
 ```
-Project-Sentinel/
+AI-Sensei/
 │
 ├── main.py                       # Entry point — APScheduler + LangGraph graph invocation
 ├── chat_server.py                # Flask web chat server — conversational operator interface
@@ -312,7 +312,7 @@ APScheduler  run_job()
        │    └─ check_confidence()           ✓   →  suppression_reason = None
        │
        └─ run_communicator()
-            ├─ build_subject()             →  "Sentinel Alert — [asset_id] — [channel] CRITICAL"
+            ├─ build_subject()             →  "AI Sensei Alert — [asset_id] — [channel] CRITICAL"
             ├─ build_body()               →  structured payload + confidence % + LLM reasoning
             └─ NotificationAdapter.send_alert()  →  alert delivered
 ```
@@ -376,8 +376,8 @@ The shared state is a flat `TypedDict`. Nodes never import or call each other �
 ### 1. Install dependencies
 
 ```bash
-git clone <repo-url>
-cd Project-Sentinel
+git clone https://github.com/Rohit-Ramesh-code/AI-Sensei.git
+cd AI-Sensei
 
 python -m venv .venv
 .venv\Scripts\activate          # Windows
