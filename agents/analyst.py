@@ -3,12 +3,11 @@ agents/analyst.py — LLM-powered trend analyst for Project Sentinel.
 
 Implements run_analyst(state: AgentState) -> AgentState, which:
 1. Runs deterministic threshold checks to identify flagged colors.
-2. For each flagged color with >= 3 history readings (7-day window):
-   - Calls an Ollama-hosted LLM via langchain-openai to produce a structured
-     AnalystOutput with trend label, depletion estimate, confidence, and reasoning.
-3. Falls back to Phase 2 deterministic logic on cold start (< 3 readings) or
-   LLM failure (any exception). Both paths set llm_confidence=None and
-   llm_reasoning=None.
+2. For each flagged color, calls an Ollama-hosted LLM via langchain-openai to
+   produce a structured AnalystOutput with trend label, depletion estimate,
+   confidence, and reasoning.
+3. Falls back to deterministic logic only on LLM failure (any exception).
+   Failure path sets llm_confidence=None and llm_reasoning=None.
 
 Design decisions:
 - AnalystOutput is a Pydantic BaseModel enforcing confidence float 0.0-1.0 at
@@ -17,8 +16,6 @@ Design decisions:
   intervals) and filters non-poll records (event_type key set).
 - call_llm_analyst() catches all exceptions immediately — no retry. Logs
   event_type=llm_failure to JSONL and returns None on failure.
-- Cold start (n < 3 for a color) skips LLM entirely; deterministic urgency is
-  preserved unchanged.
 - run_analyst() sets llm_confidence to the minimum across all LLM-analyzed
   colors (conservative: alert gates on weakest confidence).
 - USE_MOCK_LLM env var (default: false) bypasses the real LLM call in tests.
@@ -418,21 +415,6 @@ def run_analyst(state: AgentState, *, log_path: Path = None) -> AgentState:
 
         # Compute history stats for this color
         stats = compute_color_stats(color, log_path)
-
-        # Cold start check: fewer than 3 readings in window
-        # Exception: when USE_MOCK_LLM=true, skip the cold start guard so mock
-        # always runs regardless of history (enables test isolation without a
-        # pre-populated JSONL log).
-        use_mock = os.getenv("USE_MOCK_LLM", "false").lower() == "true"
-        if stats["n"] < 3 and not use_mock:
-            log_entry = (
-                f"analyst: {color} cold start (n={stats['n']} < 3) — "
-                "skipping LLM, using deterministic fallback"
-            )
-            logger.info(log_entry)
-            state["decision_log"] = state["decision_log"] + [log_entry]
-            # llm_confidence and llm_reasoning remain unset for this color
-            continue
 
         # Call LLM analyst
         result = call_llm_analyst(color, pct_for_stats, stats, log_path)

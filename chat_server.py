@@ -43,6 +43,7 @@ VALID_ACTIONS: frozenset = frozenset({
     "alert_history",
     "suppression_explanation",
     "trigger_pipeline",
+    "anomaly_check",
 })
 
 SYSTEM_PROMPT = """
@@ -52,6 +53,7 @@ Classify the user's message into exactly one of these actions:
 - alert_history: user wants to see recent alerts
 - suppression_explanation: user wants to know why an alert was suppressed
 - trigger_pipeline: user wants to run a check now
+- anomaly_check: user asks about anomalies, issues, problems, warnings, or anything needing attention on the printer
 - unknown: message doesn't match any supported action
 
 Respond with ONLY a JSON object: {"action": "<action_name>"}
@@ -147,6 +149,8 @@ def _keyword_classify(message: str) -> str:
         return "suppression_explanation"
     if any(w in m for w in ("run", "check", "trigger", "now", "manual", "force", "execute")):
         return "trigger_pipeline"
+    if any(w in m for w in ("anomaly", "issue", "problem", "warning", "attention", "concern", "anything wrong", "printer ok", "printer fine")):
+        return "anomaly_check"
     return "unknown"
 
 
@@ -246,6 +250,70 @@ def _handle_suppression_explanation() -> dict:
     })
 
 
+def _handle_anomaly_check() -> dict:
+    """Poll live toner levels and ask the LLM to identify anything needing attention.
+
+    Fetches current SNMP readings, formats them into a prompt, and calls the
+    Ollama LLM for a plain-English anomaly assessment.  Falls back to a
+    deterministic summary if the LLM call fails.
+    """
+    host = os.getenv("SNMP_HOST", "127.0.0.1")
+    community = os.getenv("SNMP_COMMUNITY", "public")
+    alert_threshold = float(os.getenv("TONER_ALERT_THRESHOLD", "20"))
+    critical_threshold = float(os.getenv("TONER_CRITICAL_THRESHOLD", "10"))
+
+    try:
+        adapter = SNMPAdapter(host, community)
+        poll = adapter.poll()
+    except Exception as exc:
+        logger.exception("anomaly_check: SNMP poll failed")
+        return _envelope("error", "anomaly_check", {"message": f"Failed to read toner levels: {exc}"})
+
+    readings = poll.get("readings", [])
+    toner = _toner_dict_from_poll(poll)
+
+    # Build a concise toner summary for the LLM
+    lines = []
+    for color, info in toner.items():
+        pct = info["pct"]
+        status = info["status"]
+        lines.append(f"  - {color}: {pct}% ({status})")
+    toner_summary = "\n".join(lines) if lines else "  No readings available."
+
+    prompt = (
+        f"Current printer toner levels:\n{toner_summary}\n\n"
+        f"Warning threshold: {alert_threshold}%\n"
+        f"Critical threshold: {critical_threshold}%\n\n"
+        "Analyse these readings. Identify any colors that need attention, "
+        "explain the severity, and recommend what action should be taken. "
+        "If everything looks fine, say so clearly. "
+        "Reply in 2-4 plain-English sentences."
+    )
+
+    base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    model = os.getenv("OLLAMA_MODEL", "llama3.1")
+    try:
+        client = Client(host=base_url)
+        response = client.chat(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0},
+        )
+        analysis = response.message.content.strip()
+    except Exception:
+        logger.warning("anomaly_check: LLM call failed — using deterministic summary", exc_info=True)
+        flagged = [c for c, info in toner.items() if info["status"] in ("low", "critical")]
+        if flagged:
+            analysis = f"The following colors need attention: {', '.join(flagged)}."
+        else:
+            analysis = "All toner levels are within normal range."
+
+    return _envelope("ok", "anomaly_check", {
+        "analysis": analysis,
+        "toner": toner,
+    })
+
+
 def _handle_trigger_pipeline() -> dict:
     """Run the full LangGraph pipeline in a thread with a 30-second timeout.
 
@@ -257,13 +325,14 @@ def _handle_trigger_pipeline() -> dict:
         alert_needed, alert_sent, suppression_reason (plain English),
         toner (per-color dict or None), llm_reasoning.
     """
+    timeout = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "120"))
     with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
         future = executor.submit(run_pipeline)
         try:
-            state = future.result(timeout=30)
+            state = future.result(timeout=timeout)
         except TimeoutError:
             return _envelope("error", "trigger_pipeline", {
-                "message": "Pipeline timed out after 30 seconds"
+                "message": f"Pipeline timed out after {timeout} seconds"
             })
         except Exception as exc:
             logger.exception("trigger_pipeline handler error")
@@ -321,6 +390,8 @@ def create_app() -> Flask:
             result = _handle_suppression_explanation()
         elif action == "trigger_pipeline":
             result = _handle_trigger_pipeline()
+        elif action == "anomaly_check":
+            result = _handle_anomaly_check()
         else:
             # Unknown intent -- return help text
             return (
