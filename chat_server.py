@@ -18,14 +18,16 @@ Run:
 """
 
 # stdlib
+import hmac
 import json
 import logging
 import os
 import concurrent.futures
 from datetime import datetime, timezone, timedelta
+from functools import wraps
 
 # third-party
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, session, redirect, url_for
 from ollama import Client
 from dotenv import load_dotenv
 
@@ -69,6 +71,30 @@ SUPPRESSION_MESSAGES = {
 }
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Auth helper
+# ---------------------------------------------------------------------------
+
+def _require_login(f):
+    """Decorator that redirects to /login when the session is not authenticated."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not session.get("logged_in"):
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated
+
+
+def _check_credentials(username: str, password: str) -> bool:
+    """Timing-safe credential check against CHAT_USERNAME / CHAT_PASSWORD env vars."""
+    expected_user = os.getenv("CHAT_USERNAME", "")
+    expected_pass = os.getenv("CHAT_PASSWORD", "")
+    # hmac.compare_digest prevents timing attacks; encode to bytes for comparison
+    user_ok = hmac.compare_digest(username.encode(), expected_user.encode())
+    pass_ok = hmac.compare_digest(password.encode(), expected_pass.encode())
+    return user_ok and pass_ok
 
 
 # ---------------------------------------------------------------------------
@@ -367,12 +393,35 @@ def create_app() -> Flask:
     load_dotenv()
 
     app = Flask(__name__)
+    app.secret_key = os.getenv("SECRET_KEY", "dev-insecure-change-me")
+
+    @app.get("/login")
+    def login():
+        if session.get("logged_in"):
+            return redirect(url_for("index"))
+        return render_template("login.html", error=None)
+
+    @app.post("/login")
+    def login_post():
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if _check_credentials(username, password):
+            session["logged_in"] = True
+            return redirect(url_for("index"))
+        return render_template("login.html", error="Invalid username or password."), 401
+
+    @app.get("/logout")
+    def logout():
+        session.clear()
+        return redirect(url_for("login"))
 
     @app.get("/")
+    @_require_login
     def index():
         return render_template("chat.html")
 
     @app.post("/chat")
+    @_require_login
     def chat():
         body = request.get_json(force=True, silent=True) or {}
         message = str(body.get("message", "")).strip()

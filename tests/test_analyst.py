@@ -322,8 +322,8 @@ def test_llm_output_has_confidence_score():
         os.environ.pop("USE_MOCK_LLM", None)
 
 
-def test_cold_start_falls_back_to_deterministic():
-    """Fewer than 3 history readings → LLM not called; llm_confidence=None; alert_needed still set."""
+def test_cold_start_falls_back_to_rf():
+    """LLM unavailable at cold start → RF model provides a non-None confidence; alert_needed still set."""
     os.environ["USE_MOCK_LLM"] = "false"
     try:
         from agents.analyst import run_analyst
@@ -332,17 +332,18 @@ def test_cold_start_falls_back_to_deterministic():
                     _make_reading("yellow", "ok", 80.0, True),
                     _make_reading("black", "ok", 80.0, True)]
         state = _make_state(poll_result=_make_poll(readings))
-        # No history file → cold start → deterministic fallback
+        # No history file → cold start → RF fallback confidence (non-None, non-zero)
         result = run_analyst(state)
         assert result["alert_needed"] is True, "Cold start should still alert on threshold"
-        assert result["llm_confidence"] is None, "Cold start: llm_confidence must be None"
-        assert result["llm_reasoning"] is None, "Cold start: llm_reasoning must be None"
+        assert result["llm_confidence"] is not None, "RF fallback: llm_confidence must not be None"
+        assert 0.0 < result["llm_confidence"] < 1.0, "RF fallback confidence must be in (0, 1)"
+        assert result["llm_reasoning"] is not None, "RF fallback: llm_reasoning must not be None"
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
 
 
-def test_llm_failure_falls_back_to_deterministic():
-    """LLM API error → llm_confidence=None, llm_reasoning=None; deterministic alert still fires."""
+def test_llm_failure_falls_back_to_rf():
+    """LLM API error → RF model provides a non-None confidence; deterministic alert still fires."""
     # Force a connection failure by pointing at an unreachable URL (no Ollama running locally)
     os.environ["OLLAMA_BASE_URL"] = "http://127.0.0.1:19999/v1"  # nothing listening here
     os.environ["USE_MOCK_LLM"] = "false"
@@ -354,9 +355,10 @@ def test_llm_failure_falls_back_to_deterministic():
                     _make_reading("black", "ok", 80.0, True)]
         state = _make_state(poll_result=_make_poll(readings))
         result = run_analyst(state)
-        assert result["llm_confidence"] is None, "LLM failure: llm_confidence must be None"
-        assert result["llm_reasoning"] is None, "LLM failure: llm_reasoning must be None"
-        assert result["alert_needed"] is True, "LLM failure fallback should still alert on threshold"
+        assert result["llm_confidence"] is not None, "RF fallback: llm_confidence must not be None"
+        assert 0.0 < result["llm_confidence"] < 1.0, "RF fallback confidence must be in (0, 1)"
+        assert result["llm_reasoning"] is not None, "RF fallback: llm_reasoning must not be None"
+        assert result["alert_needed"] is True, "RF fallback should still alert on threshold"
     finally:
         os.environ.pop("USE_MOCK_LLM", None)
         os.environ.pop("OLLAMA_BASE_URL", None)

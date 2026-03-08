@@ -49,6 +49,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
 from adapters.persistence import append_poll_result, read_poll_history
+from agents.confidence_model import predict_confidence
 from state_types import AgentState, QualityFlag
 
 logger = logging.getLogger(__name__)
@@ -405,6 +406,7 @@ def run_analyst(state: AgentState, *, log_path: Path = None) -> AgentState:
 
     llm_confidences: list[float] = []
     llm_reasonings: list[str] = []
+    used_rf_fallback = False
 
     for item in flagged:
         color = item["color"]
@@ -420,9 +422,21 @@ def run_analyst(state: AgentState, *, log_path: Path = None) -> AgentState:
         result = call_llm_analyst(color, pct_for_stats, stats, log_path)
 
         if result is None:
-            # LLM failure — keep deterministic urgency, log the event
+            # LLM failure — use Random Forest model for confidence estimation.
+            # RF always returns a non-zero score so the Policy Guard has something
+            # meaningful to gate on even during cold start or LLM downtime.
+            rf_conf = predict_confidence(
+                current_pct=pct_for_stats,
+                n=stats["n"],
+                velocity=stats["velocity_pct_per_day"],
+                std_dev=stats["std_dev"],
+                urgency=item["urgency"],
+            )
+            llm_confidences.append(rf_conf)
+            used_rf_fallback = True
             log_entry = (
-                f"analyst: LLM failed for {color} — using deterministic fallback"
+                f"analyst: LLM failed for {color} — "
+                f"RF fallback confidence={rf_conf:.3f} (n={stats['n']})"
             )
             logger.warning(log_entry)
             state["decision_log"] = state["decision_log"] + [log_entry]
@@ -451,17 +465,28 @@ def run_analyst(state: AgentState, *, log_path: Path = None) -> AgentState:
         logger.info(log_entry)
         state["decision_log"] = state["decision_log"] + [log_entry]
 
-    # --- LLM unavailable fallback note ---
+    # --- Consolidate confidence and reasoning across all flagged colors ---
     if not llm_confidences:
-        # All colors were cold start or LLM failure — no LLM was called
+        # Should not be reached when flagged is non-empty (RF always contributes),
+        # but kept as a final safety net.
         state["llm_confidence"] = None
         state["llm_reasoning"] = None
         fallback_entry = "analyst: LLM unavailable — using deterministic fallback"
         state["decision_log"] = state["decision_log"] + [fallback_entry]
     else:
-        # Set minimum confidence (conservative: alert gates on weakest signal)
+        # Conservative: alert gates on the weakest confidence across all colors.
         state["llm_confidence"] = min(llm_confidences)
-        # Combine reasoning (multiple colors separated by newline)
-        state["llm_reasoning"] = "\n".join(llm_reasonings)
+
+        if llm_reasonings:
+            # At least one LLM call succeeded — use its text reasoning.
+            state["llm_reasoning"] = "\n".join(llm_reasonings)
+        elif used_rf_fallback:
+            # All confidence scores came from the RF model (LLM was unavailable).
+            state["llm_reasoning"] = (
+                "Confidence estimated by Random Forest model (LLM unavailable). "
+                "Score reflects data availability and signal quality."
+            )
+        else:
+            state["llm_reasoning"] = None
 
     return state

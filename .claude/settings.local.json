@@ -3,7 +3,9 @@
     "allow": [
       "Bash(python:*)",
       "Bash(py:*)",
-      "Bash(node:*)"
+      "Bash(node:*)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(.venv/bin/pip list:*)"
     ]
   }
 }
