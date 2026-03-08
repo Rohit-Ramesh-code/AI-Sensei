@@ -265,8 +265,9 @@ class AnalystOutput(BaseModel):
 
 - Sets `state["llm_confidence"]` to the **minimum** across all flagged channels (conservative: the weakest signal governs the alert decision)
 
-**Pass 3 — RF confidence fallback (when LLM is unavailable):**
+**Pass 3 — RF confidence fallback (when LLM is unavailable or returns zero confidence):**
 - If `call_llm_analyst()` raises any exception, the RF model in `confidence_model.py` is invoked immediately for that channel
+- If the LLM returns `confidence == 0.0` (sparse data, no history), the RF model is invoked and substitutes a calibrated non-zero baseline — the pipeline never propagates a zero confidence score
 - The RF score is appended to `llm_confidences` exactly as an LLM score would be — the Policy Guard sees no difference
 - See [RF Confidence Model](#rf-confidence-model) for full detail
 
@@ -275,7 +276,7 @@ class AnalystOutput(BaseModel):
 The output layer. Only executes when the Policy Guard clears the alert.
 
 - Receives `flagged_metrics`, `llm_confidence`, and `llm_reasoning` from `AgentState`
-- Builds a structured alert payload: asset identifier, flagged channels, urgency tiers, confidence %, natural language reasoning
+- Builds a structured alert payload: asset identifier, flagged channels, urgency tiers, confidence (0–1 decimal), natural language reasoning
 - When LLM analysis is unavailable: includes a fallback note — "Analysis unavailable — alert based on threshold check only"
 - Dispatches via the configured Notification Adapter (`SMTPAdapter` in the reference implementation)
 - Records the alert timestamp to `logs/alert_state.json` for the rate limiter
@@ -586,6 +587,7 @@ All variables are loaded from `.env` via `python-dotenv`. Never commit `.env`.
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | OpenAI-compatible API base URL |
 | `OLLAMA_MODEL` | `minimax-m2.5:cloud` | Model identifier as registered in Ollama |
 | `OLLAMA_API_KEY` | `ollama` | Placeholder key (Ollama does not require auth) |
+| `LLM_TIMEOUT_SECONDS` | `20` | Seconds to wait for a single Ollama LLM response before falling back to the RF confidence model. Keep well below `PIPELINE_TIMEOUT_SECONDS`. Increase if your model is large and generation is consistently slow. |
 
 ### Scheduling
 
