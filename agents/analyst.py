@@ -254,6 +254,7 @@ def call_llm_analyst(
             api_key=os.getenv("OLLAMA_API_KEY", "ollama"),
             model=os.getenv("OLLAMA_MODEL", "llama3.2"),
             temperature=0,
+            timeout=int(os.getenv("LLM_TIMEOUT_SECONDS", "20")),
         )
         # Try json_schema first; fall back to json_mode if model does not support it
         try:
@@ -454,12 +455,31 @@ def run_analyst(state: AgentState, *, log_path: Path = None) -> AgentState:
         if new_urgency is not None:
             item["urgency"] = new_urgency
 
-        llm_confidences.append(result.confidence)
+        # If the LLM reports zero confidence (no history, sparse data), substitute
+        # the RF model's calibrated baseline so the pipeline never carries a 0.
+        conf = result.confidence
+        if conf == 0.0:
+            rf_conf = predict_confidence(
+                current_pct=pct_for_stats,
+                n=stats["n"],
+                velocity=stats["velocity_pct_per_day"],
+                std_dev=stats["std_dev"],
+                urgency=item["urgency"],
+            )
+            log_entry = (
+                f"analyst: {color} LLM confidence=0 — "
+                f"substituted RF baseline={rf_conf:.3f} (n={stats['n']})"
+            )
+            logger.warning(log_entry)
+            state["decision_log"] = state["decision_log"] + [log_entry]
+            conf = rf_conf
+
+        llm_confidences.append(conf)
         llm_reasonings.append(result.reasoning)
 
         log_entry = (
             f"analyst: {color} LLM result — "
-            f"trend={trend_label}, confidence={result.confidence:.2f}, "
+            f"trend={trend_label}, confidence={conf:.3f}, "
             f"depletion={result.depletion_estimate_days} days"
         )
         logger.info(log_entry)

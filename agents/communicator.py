@@ -88,7 +88,7 @@ def build_body(
           {Color}: {display_value} [{urgency}]
           Recommended action: Order {color} toner
 
-        Confidence: {X}%
+        Confidence: {X.XXX}
         Analysis:
         {llm_reasoning}
 
@@ -118,7 +118,7 @@ def build_body(
                          "Analysis:" section is appended. When None, the locked
                          fallback note is appended instead.
         llm_confidence:  Optional LLM confidence score (0.0–1.0). When set
-                         alongside llm_reasoning, a "Confidence: X%" line is
+                         alongside llm_reasoning, a "Confidence: X.XXX" line is
                          emitted before the "Analysis:" section (ALRT-02).
 
     Returns:
@@ -135,7 +135,7 @@ def build_body(
         lines.append("")  # blank line between color entries
 
     if llm_confidence is not None:
-        lines.append(f"Confidence: {llm_confidence:.0%}")
+        lines.append(f"Confidence: {llm_confidence:.3f}")
     else:
         lines.append("Confidence: N/A (threshold-based check)")
 
